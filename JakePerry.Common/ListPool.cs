@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace JakePerry
 {
     /// <summary>
-    /// A pool of list objects.
+    /// A pool of list objects that can be reused to prevent memory allocations.
     /// </summary>
     public static class ListPool<T>
     {
