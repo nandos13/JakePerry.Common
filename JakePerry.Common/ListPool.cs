@@ -40,7 +40,7 @@ namespace JakePerry
             return s_pool.Get();
         }
 
-        /// <inheritdoc cref="Get"/>
+        /// <inheritdoc cref="Get()"/>
         /// <param name="capacity">Shortcut to ensure the returned list has a minimum capacity.</param>
         public static List<T> Get(int capacity)
         {
