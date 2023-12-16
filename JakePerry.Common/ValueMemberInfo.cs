@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 
@@ -22,10 +23,55 @@ namespace JakePerry
         public readonly MemberInfo member;
 
         /// <summary>
+        /// Indicates the type that declares this member.
+        /// </summary>
+        public Type DeclaringType => member?.DeclaringType;
+
+        /// <summary>
         /// Indicates whether the underlying <see cref="MemberInfo"/> is null.
         /// This is true for default instances of this struct.
         /// </summary>
         public bool IsNull => member is null;
+
+        /// <summary>
+        /// Indicates whether the member is public.
+        /// </summary>
+        public bool IsPublic
+        {
+            get
+            {
+                if (member is FieldInfo f)
+                {
+                    return f.IsPublic;
+                }
+                else if (member is PropertyInfo p)
+                {
+                    return p.GetMethod.IsPublic && (p.SetMethod?.IsPublic ?? true);
+                }
+
+                throw GetNullMemberException();
+            }
+        }
+
+        /// <summary>
+        /// Indicates whether the member is static.
+        /// </summary>
+        public bool IsStatic
+        {
+            get
+            {
+                if (member is FieldInfo f)
+                {
+                    return f.IsStatic;
+                }
+                else if (member is PropertyInfo p)
+                {
+                    return p.GetMethod.IsStatic && (p.SetMethod?.IsStatic ?? true);
+                }
+
+                throw GetNullMemberException();
+            }
+        }
 
         /// <summary>
         /// The return type of the underlying field or property.
@@ -97,6 +143,37 @@ namespace JakePerry
             throw GetNullMemberException();
         }
 
+        /// <summary>
+        /// Shorthand method which sets the member value if the previous value is considered
+        /// inequal according to the given equality comparer.
+        /// </summary>
+        /// <returns>
+        /// <see langword="true"/> if the value was modified; otherwise, <see langword="false"/>.
+        /// </returns>
+        public bool SetValue(object obj, object value, IEqualityComparer comparer, out object previousValue)
+        {
+            _ = comparer ?? throw new ArgumentNullException(nameof(comparer));
+
+            if (member is FieldInfo field)
+            {
+                previousValue = field.GetValue(obj);
+                if (comparer.Equals(value, previousValue)) return false;
+
+                field.SetValue(obj, value);
+                return true;
+            }
+            else if (member is PropertyInfo prop)
+            {
+                previousValue = prop.GetValue(obj);
+                if (comparer.Equals(value, previousValue)) return false;
+
+                prop.SetValue(obj, value);
+                return true;
+            }
+
+            throw GetNullMemberException();
+        }
+
         public bool Equals(ValueMemberInfo other)
         {
             return EqualityComparer<MemberInfo>.Default.Equals(member, other.member);
@@ -133,6 +210,31 @@ namespace JakePerry
                 return new ValueMemberInfo(property);
 
             throw new ArgumentException("Member must be a field or property.", nameof(member));
+        }
+
+        /// <summary>
+        /// Attempt to cast the given member to a <see cref="ValueMemberInfo"/>. This operation succeeds
+        /// if <paramref name="member"/> is a <see cref="FieldInfo"/> or <see cref="PropertyInfo"/>;
+        /// Otherwise, it fails.
+        /// </summary>
+        /// <param name="member">The member to cast.</param>
+        /// <param name="valueMember">The casted object, if the operation succeeds.</param>
+        /// <returns>
+        /// <see langword="true"/> if the member is successfully cast; Otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="ArgumentNullException"/>
+        public static bool TryCast(MemberInfo member, out ValueMemberInfo valueMember)
+        {
+            _ = member ?? throw new ArgumentNullException(nameof(member));
+
+            valueMember = member switch
+            {
+                FieldInfo field => new ValueMemberInfo(field),
+                PropertyInfo property => new ValueMemberInfo(property),
+                _ => default
+            };
+
+            return !valueMember.IsNull;
         }
     }
 }
