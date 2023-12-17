@@ -94,6 +94,8 @@ namespace JakePerry
             }
         }
 
+        public string Name => member.Name;
+
         public ValueMemberInfo(FieldInfo member) { this.member = member; }
 
         public ValueMemberInfo(PropertyInfo member) { this.member = member; }
