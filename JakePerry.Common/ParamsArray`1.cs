@@ -149,12 +149,12 @@ namespace JakePerry
         /// Copy contents to a new array.
         /// </summary>
         /// <remarks>This is an allocating call.</remarks>
-        public object[] ToArray()
+        public T[] ToArray()
         {
             var len = Length;
-            if (len == 0) return Array.Empty<object>();
+            if (len == 0) return Array.Empty<T>();
 
-            var copy = new object[len];
+            var copy = new T[len];
             copy[0] = m_arg0;
             for (int i = 1; i < len; ++i)
             {
