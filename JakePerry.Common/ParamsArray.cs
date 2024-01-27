@@ -141,7 +141,26 @@ namespace JakePerry
 
 #pragma warning restore HAA0601
 
-        public bool Equals(ParamsArray other, EqualityComparer<object> elementComparer)
+        /// <summary>
+        /// Copy contents to a new array.
+        /// </summary>
+        /// <remarks>This is an allocating call.</remarks>
+        public object[] ToArray()
+        {
+            var len = Length;
+            if (len == 0) return Array.Empty<object>();
+
+            var copy = new object[len];
+            copy[0] = m_arg0;
+            for (int i = 1; i < len; ++i)
+            {
+                copy[i] = GetAtSlow(i);
+            }
+
+            return copy;
+        }
+
+        public bool Equals(ParamsArray other, IEqualityComparer elementComparer)
         {
             _ = elementComparer ?? throw new ArgumentNullException(nameof(elementComparer));
 
