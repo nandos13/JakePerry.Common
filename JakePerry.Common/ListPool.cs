@@ -6,78 +6,124 @@ namespace JakePerry
     /// <summary>
     /// A pool of list objects that can be reused to prevent memory allocations.
     /// </summary>
-    public static class ListPool<T>
+    public static class ListPool
     {
-        public const int kDefaultMaxListCount = ObjectPool<List<T>>.kDefaultCapacity;
-
-        private static readonly ObjectPool<List<T>> s_pool;
-
         /// <summary>
-        /// The number of lists currently in the pool.
+        /// Contains the static pool of lists of type <typeparamref name="T"/>
+        /// as well as some other helpers.
         /// </summary>
-        public static int ListCount => s_pool.Count;
-
-        /// <summary>
-        /// The maximum number of lists that can be stored in the pool at one time (minimum 1).
-        /// </summary>
-        public static int MaxListCount
+        private static class GenericListPool<T>
         {
-            get => s_pool.Capacity;
-            set => s_pool.Capacity = value;
-        }
-
-        private static void Clear(List<T> list)
-        {
-            list.Clear();
-        }
-
-        /// <summary>
-        /// Get a list from the pool, or create a new one if the pool is empty.
-        /// </summary>
-        /// <returns>A list of type <typeparamref name="T"/>.</returns>
-        public static List<T> Get()
-        {
-            return s_pool.Get();
-        }
-
-        /// <inheritdoc cref="Get()"/>
-        /// <param name="capacity">Shortcut to ensure the returned list has a minimum capacity.</param>
-        public static List<T> Get(int capacity)
-        {
-            var list = s_pool.Get();
-
-            // Ensure the list has the minimum required capacity.
-            // Note: It would be ideal if we could check for an existing list with this capacity in the pool
-            // first, but this isn't nicely implementable since ObjectPool uses a Stack collection.
-            if (list.Capacity < capacity)
+            /// <summary>
+            /// Implementation of the list pool.
+            /// Hadles clearing lists before they are returned to the pool.
+            /// </summary>
+            internal sealed class ListPoolImpl : ObjectPool<List<T>>
             {
-                list.Capacity = capacity;
+                protected override List<T> Activate() => new();
+
+                protected override void BeforeReturnToPool(List<T> obj)
+                {
+                    obj.Clear();
+                }
             }
 
-            return list;
+            /// <summary>
+            /// Helper for finding a pooled list with a given available capacity.
+            /// Optimized to prevent subsequent allocations.
+            /// </summary>
+            private sealed class CapacityHelper : IComparer<List<T>>
+            {
+                internal readonly Predicate<List<T>> minCapacityPredicate;
+
+                internal int Capacity { get; set; }
+
+                internal CapacityHelper() => minCapacityPredicate = HasCapacity;
+
+                private bool HasCapacity(List<T> list) => list.Capacity >= Capacity;
+
+                int IComparer<List<T>>.Compare(List<T> x, List<T> y)
+                {
+                    return x.Capacity.CompareTo(y.Capacity);
+                }
+            }
+
+            [ThreadStatic]
+            private static CapacityHelper _capacityHelper;
+
+            internal static readonly ListPoolImpl _pool = new();
+
+            internal static List<T> RentWithCapacity(int capacity)
+            {
+                var helper = _capacityHelper ??= new();
+                helper.Capacity = capacity;
+
+                if (_pool.TryRent(helper.minCapacityPredicate, out List<T> match))
+                {
+                    return match;
+                }
+
+                var list = _pool.RentBest(comparer: helper);
+                list.Capacity = capacity;
+
+                return list;
+            }
         }
 
         /// <summary>
-        /// Release a list into the pool to be reused by a future invocation of the <see cref="Get"/> method.
-        /// The list will not be added if the pool is already at capacity.
+        /// Get the internal <see cref="ObjectPool{T}"/> object.
         /// </summary>
-        /// <param name="list">
-        /// A reference to the list to release. This will be set to <see langword="null"/>
-        /// to ensure the field is not reused after it has been released.
-        /// </param>
-        public static void Release(ref List<T> list)
+        public static ObjectPool<List<T>> GetInternalPool<T>()
         {
-            s_pool.Release(ref list);
+            return GenericListPool<T>._pool;
         }
 
-#pragma warning disable CA1810 // Initialize reference type static fields inline
-        static ListPool()
-#pragma warning restore CA1810
+        /// <summary>
+        /// Rent a list from the pool.
+        /// </summary>
+        public static List<T> Rent<T>()
         {
-            // Delegate method to clear a list when it's released to the pool.
-            var onRelease = new Action<List<T>>(Clear);
+            return GenericListPool<T>._pool.Rent();
+        }
 
-            s_pool = new ObjectPool<List<T>>(null, onRelease);
+        /// <summary>
+        /// <inheritdoc cref="Rent()"/>
+        /// Searches pooled lists to find one with adequate capacity.
+        /// If no adequate lists are found, increases the capacity of the largest list.
+        /// </summary>
+        /// <param name="capacity">
+        /// The minimum capacity of the rented list.
+        /// </param>
+        public static List<T> Rent<T>(int capacity)
+        {
+            return GenericListPool<T>.RentWithCapacity(capacity);
+        }
+
+        /// <summary>
+        /// Return a list to the pool.
+        /// </summary>
+        /// <param name="list">
+        /// The list to return.
+        /// </param>
+        public static void Return<T>(List<T> list)
+        {
+            GenericListPool<T>._pool.Return(list);
+        }
+
+        /// <param name="list">
+        /// The rented list.
+        /// </param>
+        /// <inheritdoc cref="ObjectPool{T}.RentInScope(out T)"/>
+        public static ObjectPool<List<T>>.RentalScope RentInScope<T>(out List<T> list)
+        {
+            return GenericListPool<T>._pool.RentInScope(out list);
+        }
+
+        /// <param name="list"><inheritdoc cref="Return{T}(List{T})"/></param>
+        /// <inheritdoc cref="ObjectPool{T}.ReturnOnExitScope(T)"/>
+        public static ObjectPool<List<T>>.RentalScope ReturnOnExitScope<T>(List<T> list)
+        {
+            return GenericListPool<T>._pool.ReturnOnExitScope(list);
         }
     }
 }

@@ -1,102 +1,337 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace JakePerry
 {
     /// <summary>
-    /// Provides a means to pool objects that are no longer in use to be reused at a later time.
+    /// Defines a base class for a threadsafe pool of reusable objects.
     /// </summary>
-    public class ObjectPool<T> where T : class, new()
+    public abstract class ObjectPool<T> where T : class
     {
-        public const int kDefaultCapacity = 8;
+        private readonly List<T> m_pool = new();
 
-        private readonly Stack<T> m_stack = new Stack<T>(capacity: kDefaultCapacity);
+        public struct RentalScope
+        {
+            private readonly ObjectPool<T> m_pool;
+            private T m_obj;
 
-        private readonly Action<T> m_onGet;
-        private readonly Action<T> m_onRelease;
+            internal RentalScope(ObjectPool<T> pool, T obj)
+            {
+                m_pool = pool;
+                m_obj = obj;
+            }
 
-        private int m_capacity = kDefaultCapacity;
+            public void Dispose()
+            {
+                m_pool.Return(m_obj);
+                m_obj = null;
+            }
+        }
+
+        private int LOCK_TOKEN = 0;
 
         /// <summary>
-        /// The maximum number of objects that can be stored in the pool at one time (minimum 1).
+        /// Gets or sets the total number of objects that can be held
+        /// by the pool at one time. Minimum capacity is 1.
         /// </summary>
         public int Capacity
         {
-            get => m_capacity;
+            get
+            {
+                AcquireLock();
+                try
+                {
+                    return m_pool.Capacity;
+                }
+                finally { LOCK_TOKEN = 0; }
+            }
             set
             {
-                if (value < 1)
-                    throw new ArgumentOutOfRangeException(nameof(value));
+                if (value < 1) throw new ArgumentOutOfRangeException(nameof(value));
 
-                if (AssignValueUtility.SetValueType(ref m_capacity, value) &&
-                    m_stack.Count > value)
+                AcquireLock();
+                try
                 {
-                    // Pop elements from the stack until its count is no longer greater than the desired capacity.
-                    while (m_stack.Count > value)
-                        m_stack.Pop();
+                    // Remove excess elements when downsizing.
+                    for (int i = m_pool.Count - 1; i >= value; --i)
+                    {
+                        m_pool.RemoveAt(i);
+                    }
 
-                    // Trim excess to minimize memory usage when downsizing from a large capacity to a smaller value.
-                    m_stack.TrimExcess();
+                    m_pool.Capacity = value;
                 }
+                finally { LOCK_TOKEN = 0; }
             }
         }
 
         /// <summary>
-        /// The number of objects currently in the pool.
+        /// Indicates the current number of objects in the pool.
         /// </summary>
-        public int Count => this.m_stack.Count;
-
-        public ObjectPool(Action<T> onGet, Action<T> onRelease)
+        public int Count
         {
-            m_onGet = onGet;
-            m_onRelease = onRelease;
+            get
+            {
+                AcquireLock();
+                try
+                {
+                    return m_pool.Count;
+                }
+                finally { LOCK_TOKEN = 0; }
+            }
+        }
+
+        private void AcquireLock()
+        {
+            // Very simple spinlock implementation for basic thread safety.
+            // This lock will almost never be contested & when obtained it will
+            // be released near immediately.
+            // This implementation avoids overhead of the lock(object) statement.
+            while (Interlocked.CompareExchange(ref LOCK_TOKEN, 1, 0) != 0) { }
         }
 
         /// <summary>
-        /// Get an object from the pool, or create a new one if the pool is empty.
+        /// When overridden in a derived class, activates a new instance
+        /// of type <typeparamref name="T"/>.
         /// </summary>
-        /// <returns>An object of type <typeparamref name="T"/>.</returns>
-        public T Get()
-        {
-            // Get element from the stack, or a new object if empty.
-            var obj = m_stack.Count > 0
-                ? m_stack.Pop()
-                : new T();
-
-            // Invoke any get logic.
-            m_onGet?.Invoke(obj);
-
-            return obj;
-        }
+        /// <returns>
+        /// The object instance that was activated.
+        /// </returns>
+        protected abstract T Activate();
 
         /// <summary>
-        /// Release an object into the pool to be reused by a future invocation of the <see cref="Get"/> method.
-        /// The object will not be added if the pool is already at capacity.
+        /// Invoked before a rented object is returned into the pool for reuse.
         /// </summary>
         /// <param name="obj">
-        /// A reference to the object to release. This will be set to <see langword="null"/>
-        /// to ensure the field is not reused after it has been released.
+        /// The rented object that is returning to the pool.
         /// </param>
-        public void Release(ref T obj)
-        {
-            // Don't pool a null object.
-            if (obj is null)
-                return;
+        protected virtual void BeforeReturnToPool(T obj) { }
 
+        /// <summary>
+        /// Clear the pool.
+        /// </summary>
+        public void Clear()
+        {
+            AcquireLock();
             try
             {
-                // Invoke any release logic.
-                m_onRelease?.Invoke(obj);
-
-                // Don't pool the object if pool is already at capacity.
-                if (m_stack.Count >= m_capacity)
-                    return;
-
-                // We can only assume the object is in a safe state to pool if the onRelease invocation
-                // above completes without throwing an exception.
-                m_stack.Push(obj);
+                m_pool.Clear();
             }
-            finally { obj = null; }
+            finally { LOCK_TOKEN = 0; }
+        }
+
+        /// <summary>
+        /// Check if the object is present in the pool, ignoring any custom equality logic
+        /// implemented by type <typeparamref name="T"/>.
+        /// </summary>
+        /// <remarks>
+        /// Note: Assumes the lock has already been taken.
+        /// </remarks>
+        private bool FastContains(T obj)
+        {
+            var asObject = (object)obj;
+            foreach (var o in m_pool)
+            {
+                if (o == asObject) return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Rent an object from the pool.
+        /// </summary>
+        public T Rent()
+        {
+            AcquireLock();
+            try
+            {
+                int index = m_pool.Count - 1;
+
+                // Rent from the pool, if it's not empty.
+                if (m_pool.Count > -1)
+                {
+                    var obj = m_pool[index];
+                    m_pool.RemoveAt(index);
+
+                    return obj;
+                }
+            }
+            finally { LOCK_TOKEN = 0; }
+
+            // Activate a new instance
+            return Activate();
+        }
+
+        /// <summary>
+        /// Rent the best scoring object from the pool.
+        /// </summary>
+        /// <param name="comparer">
+        /// A comparison delegate that compares the arbitrary score of two pooled objects
+        /// and returns the appropriate comparison value.
+        /// </param>
+        /// <remarks>
+        /// The following code example shows a comparison method that would
+        /// rent the list with the largest capacity.
+        /// <code>
+        /// public int Compare(List&lt;int&gt; x, List&lt;int&gt; y)
+        /// {
+        ///     return x.Capacity.CompareTo(y.Capacity);
+        /// }
+        /// </code>
+        /// </remarks>
+        public T RentBest(IComparer<T> comparer)
+        {
+            _ = comparer ?? throw new ArgumentNullException(nameof(comparer));
+
+            AcquireLock();
+            try
+            {
+                if (m_pool.Count > 1)
+                {
+                    int bestIndex = 0;
+                    var best = m_pool[0];
+                    for (int i = 1; i < m_pool.Count; ++i)
+                    {
+                        var other = m_pool[i];
+                        if (comparer.Compare(best, other) < 0)
+                        {
+                            bestIndex = i;
+                            best = other;
+                        }
+                    }
+
+                    m_pool.RemoveAt(bestIndex);
+                    return best;
+                }
+            }
+            finally { LOCK_TOKEN = 0; }
+
+            // Use default logic if there are less than two objects in the pool.
+            return Rent();
+        }
+
+        /// <inheritdoc cref="RentBest(IComparer{T})"/>
+        /// <param name="comparison">
+        /// A comparison delegate that compares the arbitrary score of two pooled objects
+        /// and returns the appropriate comparison value.
+        /// </param>
+        public T RentBest(Comparison<T> comparison)
+        {
+            var comparer = ComparisonWrapper<T>.Acquire(comparison);
+            var rental = RentBest(comparer);
+
+            ComparisonWrapper<T>.Return(comparer);
+
+            return rental;
+        }
+
+        /// <summary>
+        /// Return an object to the pool.
+        /// </summary>
+        /// <param name="obj">
+        /// The object to return.
+        /// </param>
+        public void Return(T obj)
+        {
+            // Don't pool a null object.
+            if (obj is null) return;
+
+            AcquireLock();
+            try
+            {
+                if (FastContains(obj))
+                {
+                    throw new InvalidOperationException("Cannot return an object that is already present in the pool.");
+                }
+
+                // Don't exceed the maximum capacity.
+                if (Count < Capacity)
+                {
+                    BeforeReturnToPool(obj);
+                    m_pool.Add(obj);
+                }
+            }
+            finally { LOCK_TOKEN = 0; }
+        }
+
+        /// <summary>
+        /// Rent an object from the pool and obtain a scope object that will
+        /// handle returning said object when it is disposed.
+        /// </summary>
+        /// <param name="obj">
+        /// The rented object.
+        /// </param>
+        /// <returns>
+        /// A disposable scope object that returns <paramref name="obj"/> to
+        /// the pool when disposed.
+        /// </returns>
+        /// <remarks>
+        /// The returned scope object should be used in a <c>using</c> statement.
+        /// See example below:
+        /// <code>
+        /// using var scope = pool.RentInScope(out object obj);
+        /// </code>
+        /// </remarks>
+        public RentalScope RentInScope(out T obj)
+        {
+            return new RentalScope(this, obj = Rent());
+        }
+
+        /// <summary>
+        /// Helper method that returns an object to the pool when exiting scope.
+        /// </summary>
+        /// <param name="obj"><inheritdoc cref="Return(T)"/></param>
+        /// <returns><inheritdoc cref="RentInScope(out T)"/></returns>
+        /// <remarks>
+        /// The returned scope object should be used in a <c>using</c> statement.
+        /// See example below:
+        /// <code>
+        /// using var scope = pool.ReturnOnExitScope(obj);
+        /// </code>
+        /// </remarks>
+        public RentalScope ReturnOnExitScope(T obj)
+        {
+            return new RentalScope(this, obj);
+        }
+
+        /// <summary>
+        /// Rent an object matching <paramref name="predicate"/> from the pool
+        /// if one is found.
+        /// </summary>
+        /// <param name="predicate">
+        /// The search predicate.
+        /// </param>
+        /// <param name="match">
+        /// The rented object, or <see langword="null"/> if no match was found.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if a match is found; Otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="ArgumentNullException"/>
+        public bool TryRent(Predicate<T> predicate, out T match)
+        {
+            _ = predicate ?? throw new ArgumentNullException(nameof(predicate));
+
+            AcquireLock();
+            try
+            {
+                for (int i = 0; i < m_pool.Count; ++i)
+                {
+                    var obj = m_pool[i];
+                    if (predicate.Invoke(obj))
+                    {
+                        m_pool.RemoveAt(i);
+
+                        match = obj;
+                        return true;
+                    }
+                }
+            }
+            finally { LOCK_TOKEN = 0; }
+
+            match = null;
+            return false;
         }
     }
 }
