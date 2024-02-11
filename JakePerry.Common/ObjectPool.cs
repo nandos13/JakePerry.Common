@@ -11,7 +11,7 @@ namespace JakePerry
     {
         private readonly List<T> m_pool = new();
 
-        public struct RentalScope
+        public struct RentalScope : IDisposable
         {
             private readonly ObjectPool<T> m_pool;
             private T m_obj;
