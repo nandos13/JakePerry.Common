@@ -149,7 +149,7 @@ namespace JakePerry
                 int index = m_pool.Count - 1;
 
                 // Rent from the pool, if it's not empty.
-                if (m_pool.Count > -1)
+                if (index > -1)
                 {
                     var obj = m_pool[index];
                     m_pool.RemoveAt(index);
@@ -246,7 +246,7 @@ namespace JakePerry
                 }
 
                 // Don't exceed the maximum capacity.
-                if (Count < Capacity)
+                if (m_pool.Count < m_pool.Capacity)
                 {
                     BeforeReturnToPool(obj);
                     m_pool.Add(obj);
