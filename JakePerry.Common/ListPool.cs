@@ -4,76 +4,25 @@ using System.Collections.Generic;
 namespace JakePerry
 {
     /// <summary>
-    /// A pool of list objects that can be reused to prevent memory allocations.
+    /// An API for pooling <see cref="List{T}"/> objects.
+    /// Utilizing this class in areas where lists are frequently created
+    /// can help to prevent memory allocations and improve performance.
     /// </summary>
     public static class ListPool
     {
         /// <summary>
-        /// Contains the static pool of lists of type <typeparamref name="T"/>
-        /// as well as some other helpers.
+        /// Container class for the static instance of <see cref="ListPool{T}"/>
+        /// with the given generic type argument.
         /// </summary>
         private static class GenericListPool<T>
         {
-            /// <summary>
-            /// Implementation of the list pool.
-            /// Hadles clearing lists before they are returned to the pool.
-            /// </summary>
-            internal sealed class ListPoolImpl : ObjectPool<List<T>>
-            {
-                protected override List<T> Activate() => new();
-
-                protected override void BeforeReturnToPool(List<T> obj)
-                {
-                    obj.Clear();
-                }
-            }
-
-            /// <summary>
-            /// Helper for finding a pooled list with a given available capacity.
-            /// Optimized to prevent subsequent allocations.
-            /// </summary>
-            private sealed class CapacityHelper : IComparer<List<T>>
-            {
-                internal readonly Predicate<List<T>> minCapacityPredicate;
-
-                internal int Capacity { get; set; }
-
-                internal CapacityHelper() => minCapacityPredicate = HasCapacity;
-
-                private bool HasCapacity(List<T> list) => list.Capacity >= Capacity;
-
-                int IComparer<List<T>>.Compare(List<T> x, List<T> y)
-                {
-                    return x.Capacity.CompareTo(y.Capacity);
-                }
-            }
-
-            [ThreadStatic]
-            private static CapacityHelper _capacityHelper;
-
-            internal static readonly ListPoolImpl _pool = new();
-
-            internal static List<T> RentWithCapacity(int capacity)
-            {
-                var helper = _capacityHelper ??= new();
-                helper.Capacity = capacity;
-
-                if (_pool.TryRent(helper.minCapacityPredicate, out List<T> match))
-                {
-                    return match;
-                }
-
-                var list = _pool.RentBest(comparer: helper);
-                list.Capacity = capacity;
-
-                return list;
-            }
+            internal static readonly ListPool<T> _pool = new();
         }
 
         /// <summary>
-        /// Get the internal <see cref="ObjectPool{T}"/> object.
+        /// Get the internal <see cref="ListPool{T}"/> object used by this class.
         /// </summary>
-        public static ObjectPool<List<T>> GetInternalPool<T>()
+        public static ListPool<T> GetInternalPool<T>()
         {
             return GenericListPool<T>._pool;
         }
@@ -86,17 +35,10 @@ namespace JakePerry
             return GenericListPool<T>._pool.Rent();
         }
 
-        /// <summary>
-        /// <inheritdoc cref="Rent()"/>
-        /// Searches pooled lists to find one with adequate capacity.
-        /// If no adequate lists are found, increases the capacity of the largest list.
-        /// </summary>
-        /// <param name="capacity">
-        /// The minimum capacity of the rented list.
-        /// </param>
+        /// <inheritdoc cref="ListPool{T}.RentWithCapacity(int)"/>
         public static List<T> Rent<T>(int capacity)
         {
-            return GenericListPool<T>.RentWithCapacity(capacity);
+            return GenericListPool<T>._pool.RentWithCapacity(capacity);
         }
 
         /// <summary>
