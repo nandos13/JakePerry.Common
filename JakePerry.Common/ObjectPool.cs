@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 
 namespace JakePerry
@@ -29,6 +30,9 @@ namespace JakePerry
             }
         }
 
+        [ThreadStatic]
+        private static bool _lockTakenByThread;
+
         private int LOCK_TOKEN = 0;
 
         /// <summary>
@@ -39,20 +43,24 @@ namespace JakePerry
         {
             get
             {
-                AcquireLock();
+                bool acquiredLock = false;
                 try
                 {
+                    AcquireLock(ref acquiredLock);
+
                     return m_pool.Capacity;
                 }
-                finally { LOCK_TOKEN = 0; }
+                finally { if (acquiredLock) ReleaseLock(); }
             }
             set
             {
                 if (value < 1) throw new ArgumentOutOfRangeException(nameof(value));
 
-                AcquireLock();
+                bool acquiredLock = false;
                 try
                 {
+                    AcquireLock(ref acquiredLock);
+
                     // Remove excess elements when downsizing.
                     for (int i = m_pool.Count - 1; i >= value; --i)
                     {
@@ -61,7 +69,7 @@ namespace JakePerry
 
                     m_pool.Capacity = value;
                 }
-                finally { LOCK_TOKEN = 0; }
+                finally { if (acquiredLock) ReleaseLock(); }
             }
         }
 
@@ -72,22 +80,51 @@ namespace JakePerry
         {
             get
             {
-                AcquireLock();
+                bool acquiredLock = false;
                 try
                 {
+                    AcquireLock(ref acquiredLock);
+
                     return m_pool.Count;
                 }
-                finally { LOCK_TOKEN = 0; }
+                finally { if (acquiredLock) ReleaseLock(); }
             }
         }
 
-        private void AcquireLock()
+        private void AcquireLock(ref bool lockTaken)
         {
+            if (lockTaken)
+            {
+                throw new ArgumentException("Value must be false", nameof(lockTaken));
+            }
+
+            // Check if this thread has already acquired the lock.
+            // This check is thread safe due to the ThreadStatic attribute.
+            if (_lockTakenByThread) return;
+
             // Very simple spinlock implementation for basic thread safety.
             // This lock will almost never be contested & when obtained it will
             // be released near immediately.
             // This implementation avoids overhead of the lock(object) statement.
             while (Interlocked.CompareExchange(ref LOCK_TOKEN, 1, 0) != 0) { }
+
+            // We must immediately record that this thread has the lock.
+            // Technically if the current thread died unexpectedly after the while loop
+            // and just before this call, we'd deadlock. But really, I just don't care.
+            lockTaken = true;
+            _lockTakenByThread = true;
+        }
+
+        private void ReleaseLock()
+        {
+            // We must verify the current thread actually has ownership of the lock.
+            if (!_lockTakenByThread)
+            {
+                throw new InvalidOperationException("Thread did not acquire the lock!");
+            }
+
+            LOCK_TOKEN = 0;
+            _lockTakenByThread = false;
         }
 
         /// <summary>
@@ -112,12 +149,14 @@ namespace JakePerry
         /// </summary>
         public void Clear()
         {
-            AcquireLock();
+            bool acquiredLock = false;
             try
             {
+                AcquireLock(ref acquiredLock);
+
                 m_pool.Clear();
             }
-            finally { LOCK_TOKEN = 0; }
+            finally { if (acquiredLock) ReleaseLock(); }
         }
 
         /// <summary>
@@ -143,9 +182,11 @@ namespace JakePerry
         /// </summary>
         public T Rent()
         {
-            AcquireLock();
+            bool acquiredLock = false;
             try
             {
+                AcquireLock(ref acquiredLock);
+
                 int index = m_pool.Count - 1;
 
                 // Rent from the pool, if it's not empty.
@@ -157,7 +198,7 @@ namespace JakePerry
                     return obj;
                 }
             }
-            finally { LOCK_TOKEN = 0; }
+            finally { if (acquiredLock) ReleaseLock(); }
 
             // Activate a new instance
             return Activate();
@@ -184,9 +225,11 @@ namespace JakePerry
         {
             _ = comparer ?? throw new ArgumentNullException(nameof(comparer));
 
-            AcquireLock();
+            bool acquiredLock = false;
             try
             {
+                AcquireLock(ref acquiredLock);
+
                 if (m_pool.Count > 1)
                 {
                     int bestIndex = 0;
@@ -205,7 +248,7 @@ namespace JakePerry
                     return best;
                 }
             }
-            finally { LOCK_TOKEN = 0; }
+            finally { if (acquiredLock) ReleaseLock(); }
 
             // Use default logic if there are less than two objects in the pool.
             return Rent();
@@ -237,9 +280,11 @@ namespace JakePerry
             // Don't pool a null object.
             if (obj is null) return;
 
-            AcquireLock();
+            bool acquiredLock = false;
             try
             {
+                AcquireLock(ref acquiredLock);
+
                 if (FastContains(obj))
                 {
                     throw new InvalidOperationException("Cannot return an object that is already present in the pool.");
@@ -252,7 +297,7 @@ namespace JakePerry
                     m_pool.Add(obj);
                 }
             }
-            finally { LOCK_TOKEN = 0; }
+            finally { if (acquiredLock) ReleaseLock(); }
         }
 
         /// <summary>
@@ -313,9 +358,11 @@ namespace JakePerry
         {
             _ = predicate ?? throw new ArgumentNullException(nameof(predicate));
 
-            AcquireLock();
+            bool acquiredLock = false;
             try
             {
+                AcquireLock(ref acquiredLock);
+
                 for (int i = 0; i < m_pool.Count; ++i)
                 {
                     var obj = m_pool[i];
@@ -328,7 +375,7 @@ namespace JakePerry
                     }
                 }
             }
-            finally { LOCK_TOKEN = 0; }
+            finally { if (acquiredLock) ReleaseLock(); }
 
             match = null;
             return false;
