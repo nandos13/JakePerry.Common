@@ -66,6 +66,47 @@ namespace JakePerry
 
         public static ParamsArray<T> Empty => new ParamsArray<T>(Array.Empty<T>());
 
+        /// <summary>
+        /// Constructs a new instance of <see cref="ParamsArray{T}"/> from <paramref name="array"/>.
+        /// <para/>
+        /// If the array length is 3 or less, arguments are captured individually using the
+        /// appropriate constructor &amp; the array itself is not captured.
+        /// <para/>
+        /// If the array length is greater than 3, the <see cref="ParamsArray{T}.ParamsArray(T[])"/>
+        /// constructor is used. 
+        /// </summary>
+        /// <param name="array">Source array.</param>
+        public static ParamsArray<T> FromArray(T[] array)
+        {
+            int c = array?.Length ?? 0;
+            if (c == 0) return Empty;
+            if (c == 1) return new ParamsArray<T>(array[0]);
+            if (c == 2) return new ParamsArray<T>(array[0], array[1]);
+            if (c == 3) return new ParamsArray<T>(array[0], array[1], array[2]);
+            return new ParamsArray<T>(array);
+        }
+
+        /// <summary>
+        /// Constructs a new instance of <see cref="ParamsArray{T}"/> from <paramref name="list"/>.
+        /// <para/>
+        /// If the list count is 3 or less, arguments are captured individually using the
+        /// appropriate constructor &amp; no array is captured.
+        /// <para/>
+        /// If the list count is greater than 3, the <see cref="List{T}.ToArray"/> method
+        /// is used to create a copy of <paramref name="list"/>'s contents &amp;
+        /// the <see cref="ParamsArray(object[])"/> constructor is used.
+        /// </summary>
+        /// <param name="list">Source list.</param>
+        public static ParamsArray<T> FromList(List<T> list)
+        {
+            int c = list?.Count ?? 0;
+            if (c == 0) return Empty;
+            if (c == 1) return new ParamsArray<T>(list[0]);
+            if (c == 2) return new ParamsArray<T>(list[0], list[1]);
+            if (c == 3) return new ParamsArray<T>(list[0], list[1], list[2]);
+            return new ParamsArray<T>(list.ToArray());
+        }
+
         public int Length => this.m_args is null ? 0 : this.m_args.Length;
 
         private T GetAtSlow(int index)

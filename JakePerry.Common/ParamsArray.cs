@@ -7,10 +7,13 @@ namespace JakePerry
     /// <summary>
     /// This struct is a modification of the internal System.ParamsArray
     /// type used by the mscorlib library.
-    /// <para>
+    /// <para/>
     /// This type should be used in cases where a method can accept an array of arguments of any length,
     /// but expects 3 or less in most cases.
-    /// </para>
+    /// <para/>
+    /// Note that this type will incur boxing overhead if used with value types,
+    /// which is counter to the intended use of this type. As such, the generic
+    /// <see cref="ParamsArray{T}"/> type is preferred in most cases.
     /// </summary>
     internal readonly struct ParamsArray : IEquatable<ParamsArray>, IEnumerable
     {
@@ -70,6 +73,61 @@ namespace JakePerry
         }
 
         public static ParamsArray Empty => new ParamsArray(Array.Empty<object>());
+
+        /// <summary>
+        /// Constructs a new instance of <see cref="ParamsArray"/> from <paramref name="array"/>.
+        /// <para/>
+        /// If the array length is 3 or less, arguments are captured individually using the
+        /// appropriate constructor &amp; the array itself is not captured.
+        /// <para/>
+        /// If the array length is greater than 3, the <see cref="ParamsArray(object[])"/> constructor
+        /// is used. If the array can be cast to <see cref="object"/>[] (ie. <typeparamref name="T"/> is
+        /// a reference type), the array is captured directly; Otherwise if <paramref name="array"/> cannot
+        /// be cast to <see cref="object"/>[], a new array is allocated in memory &amp; <paramref name="array"/>'s
+        /// contents is copied.
+        /// </summary>
+        /// <param name="array">Source array.</param>
+        public static ParamsArray FromArray<T>(T[] array)
+        {
+            int c = array?.Length ?? 0;
+            if (c == 0) return Empty;
+            if (c == 1) return new ParamsArray(array[0]);
+            if (c == 2) return new ParamsArray(array[0], array[1]);
+            if (c == 3) return new ParamsArray(array[0], array[1], array[2]);
+
+            if (array is not object[] objectArray)
+            {
+                objectArray = new object[c];
+                Array.Copy(array, 0, objectArray, 0, c);
+            }
+
+            return new ParamsArray(objectArray);
+        }
+
+        /// <summary>
+        /// Constructs a new instance of <see cref="ParamsArray"/> from <paramref name="list"/>.
+        /// <para/>
+        /// If the list count is 3 or less, arguments are captured individually using the
+        /// appropriate constructor &amp; no array is captured.
+        /// <para/>
+        /// If the list count is greater than 3, a new array is allocated in memory containing a copy of
+        /// <paramref name="list"/>'s contents &amp; the <see cref="ParamsArray(object[])"/> constructor
+        /// is used.
+        /// </summary>
+        /// <param name="list">Source list.</param>
+        public static ParamsArray FromList<T>(List<T> list)
+        {
+            int c = list?.Count ?? 0;
+            if (c == 0) return Empty;
+            if (c == 1) return new ParamsArray(list[0]);
+            if (c == 2) return new ParamsArray(list[0], list[1]);
+            if (c == 3) return new ParamsArray(list[0], list[1], list[2]);
+
+            var array = new object[c];
+            ((IList)list).CopyTo(array, 0);
+
+            return new ParamsArray(array);
+        }
 
         public int Length => this.m_args is null ? 0 : this.m_args.Length;
 
