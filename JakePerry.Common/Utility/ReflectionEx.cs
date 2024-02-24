@@ -234,7 +234,7 @@ namespace JakePerry
             string name,
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
             ParamsArray<Type> types = default,
-            bool throwOnError = false)
+            bool throwOnError = true)
         {
             _ = type ?? throw new ArgumentNullException(nameof(type));
             _ = name ?? throw new ArgumentNullException(nameof(name));
