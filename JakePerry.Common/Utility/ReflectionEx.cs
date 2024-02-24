@@ -4,9 +4,66 @@ using System.Reflection;
 
 namespace JakePerry
 {
+    /// <summary>
+    /// A collection of helpful methods related to Reflection.
+    /// </summary>
     public static class ReflectionEx
     {
+        /// <summary>
+        /// Unique key for caching type lookup results.
+        /// </summary>
+        private readonly struct TypeKey
+        {
+            public readonly Assembly assembly;
+            public readonly string typeName;
+
+            public TypeKey(Assembly a, string n) { assembly = a; typeName = n; }
+        }
+
+        /// <summary>
+        /// Unique key for caching field &amp; property lookups.
+        /// </summary>
+        private readonly struct FieldPropertyKey
+        {
+            public readonly Type type;
+            public readonly string name;
+
+            public FieldPropertyKey(Type t, string n) { type = t; name = n; }
+        }
+
+        /// <summary>
+        /// Unique key for caching method lookups.
+        /// </summary>
+        private readonly struct MethodKey
+        {
+            public readonly Type type;
+            public readonly string methodName;
+            public readonly ParamsArray<Type> types;
+
+            public MethodKey(
+                Type type,
+                string methodName,
+                ParamsArray<Type> types = default)
+            {
+                this.type = type;
+                this.methodName = methodName;
+                this.types = types;
+            }
+        }
+
+        /// <summary>
+        /// An array of rental buffers, where each buffer in the array contains
+        /// instances of <see cref="object"/>[] with a length equal to one more than
+        /// the index of the buffer in the array.
+        /// <para/>
+        /// ie. <c>Print(_rentalArrays[3].Pop().Length)</c> prints 4.
+        /// </summary>
         private static readonly Stack<object[]>[] _rentalArrays;
+
+        private static readonly Dictionary<TypeKey, Type> _typeLookup = new();
+        private static readonly Dictionary<FieldPropertyKey, FieldInfo> _fieldLookup = new();
+        private static readonly Dictionary<FieldPropertyKey, PropertyInfo> _propertyLookup = new();
+        private static readonly Dictionary<MethodKey, MethodInfo> _methodLookup = new();
 
         static ReflectionEx()
         {
@@ -15,6 +72,203 @@ namespace JakePerry
             {
                 _rentalArrays[i] = new Stack<object[]>(capacity: 8);
             }
+        }
+
+        /// <summary>
+        /// Get the <see cref="Type"/> object with the specified name in
+        /// <paramref name="assembly"/>.
+        /// </summary>
+        /// <param name="assembly">
+        /// The assembly which defines the type.
+        /// </param>
+        /// <param name="typeName">
+        /// The full name of the type.
+        /// </param>
+        /// <param name="throwOnError">
+        /// <see langword="true"/> to throw an exception if the type is not found;
+        /// <see langword="false"/> to return null.
+        /// </param>
+        /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="ArgumentException"/>
+        internal static Type GetType(
+            Assembly assembly,
+            string typeName,
+            bool throwOnError = true)
+        {
+            _ = assembly ?? throw new ArgumentNullException(nameof(assembly));
+            _ = typeName ?? throw new ArgumentNullException(nameof(typeName));
+
+            if (typeName.Length == 0) throw new ArgumentException("Empty string.", nameof(typeName));
+
+            var key = new TypeKey(assembly, typeName);
+            if (!_typeLookup.TryGetValue(key, out Type type))
+            {
+                type = assembly.GetType(typeName, throwOnError: throwOnError, ignoreCase: false);
+                _typeLookup[key] = type;
+            }
+            else if (throwOnError && type is null)
+            {
+                // This line will throw, since we know the input parameters are the same as a
+                // previous call that failed with 'throwOnError = false'.
+                return assembly.GetType(typeName, throwOnError: true, ignoreCase: false);
+            }
+
+            return type;
+        }
+
+        /// <summary>
+        /// Searches for the specified field, using the specified binding constraints.
+        /// </summary>
+        /// <param name="type">
+        /// The type which defines the field.
+        /// </param>
+        /// <param name="name">
+        /// The name of the data field to get.
+        /// </param>
+        /// <param name="flags">
+        /// Binding flags that specify how the search is conducted.
+        /// </param>
+        /// <param name="throwOnError">
+        /// <see langword="true"/> to throw an exception if the field is not found;
+        /// <see langword="false"/> to return null.
+        /// </param>
+        /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="ArgumentException"/>
+        /// <exception cref="ReflectionException"/>
+        internal static FieldInfo GetField(
+            Type type,
+            string name,
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
+            bool throwOnError = true)
+        {
+            _ = type ?? throw new ArgumentNullException(nameof(type));
+            _ = name ?? throw new ArgumentNullException(nameof(name));
+
+            if (name.Length == 0) throw new ArgumentException("Empty string.", nameof(name));
+
+            var key = new FieldPropertyKey(type, name);
+            if (!_fieldLookup.TryGetValue(key, out FieldInfo field))
+            {
+                field = type.GetField(name, flags);
+                _fieldLookup[key] = field;
+            }
+
+            if (throwOnError && type is null)
+            {
+                throw new ReflectionException($"Unable to find field {name} for declaring type {type}.");
+            }
+
+            return field;
+        }
+
+        /// <summary>
+        /// Searches for the specified property, using the specified binding constraints.
+        /// </summary>
+        /// <param name="type">
+        /// The type which defines the property.
+        /// </param>
+        /// <param name="name">
+        /// The name of the property to get.
+        /// </param>
+        /// <param name="flags">
+        /// Binding flags that specify how the search is conducted.
+        /// </param>
+        /// <param name="throwOnError">
+        /// <see langword="true"/> to throw an exception if the property is not found;
+        /// <see langword="false"/> to return null.
+        /// </param>
+        /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="ArgumentException"/>
+        /// <exception cref="ReflectionException"/>
+        internal static PropertyInfo GetProperty(
+            Type type,
+            string name,
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
+            bool throwOnError = true)
+        {
+            _ = type ?? throw new ArgumentNullException(nameof(type));
+            _ = name ?? throw new ArgumentNullException(nameof(name));
+
+            if (name.Length == 0) throw new ArgumentException("Empty string.", nameof(name));
+
+            var key = new FieldPropertyKey(type, name);
+            if (!_propertyLookup.TryGetValue(key, out PropertyInfo property))
+            {
+                property = type.GetProperty(name, flags);
+                _propertyLookup[key] = property;
+            }
+
+            if (throwOnError && type is null)
+            {
+                throw new ReflectionException($"Unable to find field {name} for declaring type {type}.");
+            }
+
+            return property;
+        }
+
+        /// <summary>
+        /// Searches for the specified method, using the specified binding constraints.
+        /// </summary>
+        /// <param name="type">
+        /// The type which defines the method.
+        /// </param>
+        /// <param name="name">
+        /// The name of the method to get.
+        /// </param>
+        /// <param name="flags">
+        /// Binding flags that specify how the search is conducted.
+        /// </param>
+        /// <param name="types">
+        /// An array of <see cref="Type"/> objects representing the number, order, and type of the
+        /// parameters for the method to get.
+        /// </param>
+        /// <param name="throwOnError">
+        /// <see langword="true"/> to throw an exception if the method is not found;
+        /// <see langword="false"/> to return null.
+        /// </param>
+        /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="ArgumentException"/>
+        /// <exception cref="ReflectionException"/>
+        internal static MethodInfo GetMethod(
+            Type type,
+            string name,
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
+            ParamsArray<Type> types = default,
+            bool throwOnError = false)
+        {
+            _ = type ?? throw new ArgumentNullException(nameof(type));
+            _ = name ?? throw new ArgumentNullException(nameof(name));
+
+            if (name.Length == 0) throw new ArgumentException("Empty string.", nameof(name));
+
+            var key = new MethodKey(type, name, types: types);
+            if (!_methodLookup.TryGetValue(key, out MethodInfo method))
+            {
+                if (types.Length == 0)
+                {
+                    method = type.GetMethod(name: name, bindingAttr: flags);
+                }
+                else
+                {
+                    var typesArray = types.ToArray();
+
+                    method = type.GetMethod(
+                        name: name,
+                        bindingAttr: flags,
+                        binder: null,
+                        callConvention: default,
+                        types: typesArray,
+                        modifiers: null);
+                }
+                _methodLookup[key] = method;
+            }
+
+            if (throwOnError && method is null)
+            {
+                throw new ReflectionException($"Unable to find method {name} for declaring type {type}.");
+            }
+
+            return method;
         }
 
         /// <summary>
