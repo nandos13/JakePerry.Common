@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <TargetFrameworks>netstandard2.1</TargetFrameworks>
     <LangVersion>9.0</LangVersion>
     <RootNamespace>JakePerry</RootNamespace>
     <Authors>Jake Perry</Authors>
@@ -14,5 +14,6 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Version>1.0.15</Version>
     <NoWarn>1701;1702;CS1591</NoWarn>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
 </Project>

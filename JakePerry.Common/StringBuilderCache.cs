@@ -29,7 +29,7 @@ namespace JakePerry
         private const int kDefaultCapacity = 16;
 
         [ThreadStatic]
-        private static StringBuilder s_cachedInstance;
+        private static StringBuilder _cachedInstance;
 
         /// <summary>
         /// Gets a cached StringBuilder with a minimum given capacity.
@@ -48,14 +48,14 @@ namespace JakePerry
         {
             if (capacity <= kMaxBuilderSize)
             {
-                var sb = s_cachedInstance;
+                var sb = _cachedInstance;
                 if (sb != null)
                 {
                     // Avoid stringbuilder block fragmentation by getting a new StringBuilder
                     // when the requested size is larger than the current capacity
                     if (capacity <= sb.Capacity)
                     {
-                        s_cachedInstance = null;
+                        _cachedInstance = null;
                         sb.Clear();
                         return sb;
                     }
@@ -69,11 +69,13 @@ namespace JakePerry
         /// Place the StringBuilder into the cache to be reused again if its capacity
         /// does not exceed the maximum allowed value.
         /// </summary>
-        public static void Release(ref StringBuilder sb)
+        public static void Release(StringBuilder sb)
         {
-            if (sb != null && sb.Capacity <= kMaxBuilderSize)
+            if (sb is null || sb.Capacity > kMaxBuilderSize) return;
+
+            if (_cachedInstance is null || _cachedInstance.Capacity < sb.Capacity)
             {
-                s_cachedInstance = sb;
+                _cachedInstance = sb;
             }
         }
 
@@ -81,11 +83,11 @@ namespace JakePerry
         /// Shorthand method to get the StringBuilder's ToString() value and release it
         /// in one line of code.
         /// </summary>
-        /// <seealso cref="Release(ref StringBuilder)"/>
-        public static string GetStringAndRelease(ref StringBuilder sb)
+        /// <seealso cref="Release(StringBuilder)"/>
+        public static string GetStringAndRelease(StringBuilder sb)
         {
             var result = sb?.ToString();
-            Release(ref sb);
+            Release(sb);
 
             return result;
         }
