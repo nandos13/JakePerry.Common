@@ -1,4 +1,4 @@
-﻿using JakePerry.Debug;
+﻿using JakePerry.Debugging;
 using JakePerry.Threading;
 using System;
 
