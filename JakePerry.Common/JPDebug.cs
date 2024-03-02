@@ -9,7 +9,7 @@ namespace JakePerry
     /// </summary>
     internal static class JPDebug
     {
-        private static readonly LightweightSpinLock _lock = new();
+        private static LightweightSpinLock _lock = LightweightSpinLock.Create();
 
         private static IDebugImpl _impl = DefaultDebugImpl.Instance;
 
@@ -24,6 +24,8 @@ namespace JakePerry
                 bool acquiredLock = false;
                 try
                 {
+                    _lock.AcquireLock(ref acquiredLock);
+
                     impl = _impl;
                 }
                 finally { _lock.ReleaseLock(acquiredLock); }
@@ -40,26 +42,31 @@ namespace JakePerry
             return message.ToString();
         }
 
+        /// <inheritdoc cref="IDebugImpl.Assert(bool, string)"/>
         internal static void Assert(bool condition, string message)
         {
             GetImpl()?.Assert(condition, message);
         }
 
+        /// <inheritdoc cref="IDebugImpl.Assert(bool, string)"/>
         internal static void Assert(bool condition)
         {
             Assert(condition, "Assertion failure.");
         }
 
+        /// <inheritdoc cref="IDebugImpl.LogError(bool, string)"/>
         internal static void LogError(bool trace, object message)
         {
             GetImpl()?.LogError(trace, Stringify(message));
         }
 
+        /// <inheritdoc cref="IDebugImpl.LogError(bool, string)"/>
         internal static void LogError(object message)
         {
             LogError(true, message);
         }
 
+        /// <inheritdoc cref="IDebugImpl.LogInfo(bool, string)"/>
         internal static void LogInfo(bool trace, object message)
         {
             GetImpl()?.LogInfo(trace, Stringify(message));
@@ -70,6 +77,8 @@ namespace JakePerry
             bool acquiredLock = false;
             try
             {
+                _lock.AcquireLock(ref acquiredLock);
+
                 _impl = impl;
             }
             finally { _lock.ReleaseLock(acquiredLock); }

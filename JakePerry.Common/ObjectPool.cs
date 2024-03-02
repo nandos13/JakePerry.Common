@@ -10,7 +10,8 @@ namespace JakePerry
     public abstract class ObjectPool<T> where T : class
     {
         private readonly List<T> m_pool = new();
-        private readonly LightweightSpinLock m_lock = new();
+
+        private LightweightSpinLock m_lock = LightweightSpinLock.Create();
 
         public struct RentalScope : IDisposable
         {

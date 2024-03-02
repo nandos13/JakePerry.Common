@@ -6,20 +6,60 @@ namespace JakePerry.Threading
     /// <summary>
     /// An incredibly lightweight locking mechanism, specifically designed
     /// for situations where lock acquisition time is very minimal.
+    /// <para/>
+    /// It is important to adhere to these guidelines for correct usage of this type:
+    /// <para/>
+    /// * DO NOT copy the struct (assign to a local, obtain from a property, pass to a method, etc);
+    /// You should always directly access the declaration field.
+    /// <para/>
+    /// * DO NOT run expensive code within the lock, as waiting threads will not yield.
+    /// <para/>
+    /// * DO always use with the try/finally pattern described in the documented example.
     /// </summary>
-    internal sealed class LightweightSpinLock
+    /// <example>
+    /// <code>
+    /// bool acquiredLock = false;
+    /// try
+    /// {
+    ///     m_lock.AcquireLock(ref acquiredLock);
+    ///     // Lock acquired. Do some work (but keep it minimal).
+    /// }
+    /// finally { m_lock.ReleaseLock(acquiredLock); }
+    /// </code>
+    /// </example>
+    internal struct LightweightSpinLock
     {
+        private readonly bool m_created;
+
         // Token used for locking. 0 = unlocked, 1 = locked.
-        private int m_lockToken = 0;
+        private int m_lockToken;
 
         // Id of the thread that currently possesses the lock.
-        private int m_ownerThreadId = -1;
+        private int m_ownerThreadId;
+
+        /// <summary>
+        /// Constructor used by the <see cref="Create"/> method
+        /// to set correct default values.
+        /// </summary>
+        /// <param name="dummy">Unused.</param>
+        private LightweightSpinLock(bool dummy)
+        {
+            m_lockToken = 0;
+            m_ownerThreadId = -1;
+
+            m_created = true;
+        }
 
         internal void AcquireLock(ref bool lockTaken)
         {
             if (lockTaken)
             {
                 throw new ArgumentException("Value must be false", nameof(lockTaken));
+            }
+
+            if (!m_created)
+            {
+                throw new InvalidOperationException("LightweightSpinLock must be created via the Create method");
             }
 
             int threadId = Thread.CurrentThread.ManagedThreadId;
@@ -62,6 +102,11 @@ namespace JakePerry.Threading
 
             m_ownerThreadId = -1;
             m_lockToken = 0;
+        }
+
+        internal static LightweightSpinLock Create()
+        {
+            return new LightweightSpinLock(true);
         }
     }
 }
