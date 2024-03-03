@@ -11,7 +11,7 @@ namespace JakePerry
     {
         private readonly List<T> m_pool = new();
 
-        private LightweightSpinLock m_lock = LightweightSpinLock.Create();
+        private SpinLockSlim m_lock = SpinLockSlim.Create();
 
         public struct RentalScope : IDisposable
         {

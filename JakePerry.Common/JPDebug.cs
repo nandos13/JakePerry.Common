@@ -9,7 +9,7 @@ namespace JakePerry
     /// </summary>
     internal static class JPDebug
     {
-        private static LightweightSpinLock _lock = LightweightSpinLock.Create();
+        private static SpinLockSlim _lock = SpinLockSlim.Create();
 
         private static IDebugImpl _impl = DefaultDebugImpl.Instance;
 

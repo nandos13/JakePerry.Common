@@ -12,8 +12,8 @@
   </PropertyGroup>
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Version>1.0.17</Version>
-    <NoWarn>1701;1702;CS1591</NoWarn>
+    <Version>1.0.18</Version>
+    <NoWarn>1701;1702;CS1573;CS1591</NoWarn>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
 </Project>

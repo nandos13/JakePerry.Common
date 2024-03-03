@@ -27,7 +27,7 @@ namespace JakePerry.Threading
     /// finally { m_lock.ReleaseLock(acquiredLock); }
     /// </code>
     /// </example>
-    internal struct LightweightSpinLock
+    internal struct SpinLockSlim
     {
         private readonly bool m_created;
 
@@ -42,7 +42,7 @@ namespace JakePerry.Threading
         /// to set correct default values.
         /// </summary>
         /// <param name="dummy">Unused.</param>
-        private LightweightSpinLock(bool dummy)
+        private SpinLockSlim(bool dummy)
         {
             m_lockToken = 0;
             m_ownerThreadId = -1;
@@ -59,7 +59,7 @@ namespace JakePerry.Threading
 
             if (!m_created)
             {
-                throw new InvalidOperationException("LightweightSpinLock must be created via the Create method");
+                throw new InvalidOperationException("SpinLockSlim must be created via the Create method");
             }
 
             int threadId = Thread.CurrentThread.ManagedThreadId;
@@ -104,9 +104,9 @@ namespace JakePerry.Threading
             m_lockToken = 0;
         }
 
-        internal static LightweightSpinLock Create()
+        internal static SpinLockSlim Create()
         {
-            return new LightweightSpinLock(true);
+            return new SpinLockSlim(true);
         }
     }
 }
