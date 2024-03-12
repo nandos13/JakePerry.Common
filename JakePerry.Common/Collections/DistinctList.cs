@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 
-namespace JakePerry
+namespace JakePerry.Collections
 {
     /// <summary>
     /// A list of distinct items. Maintains a List&lt;T&gt; for enumeration
