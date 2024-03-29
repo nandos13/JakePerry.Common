@@ -87,13 +87,13 @@ namespace JakePerry.Collections
         /// Get the underlying list as an <see cref="IReadOnlyCollection{T}"/>.
         /// </summary>
         /// <inheritdoc cref="AsEnumerable"/>
-        public IReadOnlyCollection<T> AsReadOnlyCollection => m_list;
+        public IReadOnlyCollection<T> AsReadOnlyCollection() => m_list;
 
         /// <summary>
         /// Get the underlying list as an <see cref="IReadOnlyList{T}"/>.
         /// </summary>
         /// <inheritdoc cref="AsEnumerable"/>
-        public IReadOnlyList<T> AsReadOnlyListInterface => m_list;
+        public IReadOnlyList<T> AsReadOnlyListInterface() => m_list;
 
         /// <inheritdoc cref="List{T}.ToArray"/>
         public T[] ToArray() => m_list.ToArray();
@@ -143,7 +143,7 @@ namespace JakePerry.Collections
 
         /* Note: Implementing equality operators for the nullable type allows us to
          * compare this object to the null literal to check if the m_list field is null.
-         * Eg: if (listNonAlloc == null) { ... }
+         * Eg: if (listReadOnly == null) { ... }
          * 
          * Without these, the comparison still compiles but will always evaluate to false.
          */

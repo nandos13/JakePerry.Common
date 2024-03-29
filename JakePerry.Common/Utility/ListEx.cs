@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace JakePerry
 {
-    public static class ListExtensions
+    public static class ListEx
     {
         /// <summary>
         /// Helper class that captures a predicate delegate and state object
