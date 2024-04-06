@@ -47,6 +47,24 @@ namespace JakePerry.Collections
             m_list = list;
         }
 
+        /// <inheritdoc cref="List{T}.BinarySearch(int, int, T, IComparer{T})"/>
+        public int BinarySearch(int index, int count, T item, IComparer<T> comparer)
+        {
+            return m_list.BinarySearch(index, count, item, comparer);
+        }
+
+        /// <inheritdoc cref="List{T}.BinarySearch(T, IComparer{T})"/>
+        public int BinarySearch(T item, IComparer<T> comparer)
+        {
+            return m_list.BinarySearch(item, comparer);
+        }
+
+        /// <inheritdoc cref="List{T}.BinarySearch(T)"/>
+        public int BinarySearch(T item)
+        {
+            return m_list.BinarySearch(item);
+        }
+
         /// <inheritdoc cref="List{T}.Contains(T)"/>
         public bool Contains(T item) => m_list.Contains(item);
 

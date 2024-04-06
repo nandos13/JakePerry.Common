@@ -47,6 +47,30 @@ namespace JakePerry.Collections
             m_array = array;
         }
 
+        /// <inheritdoc cref="Array.BinarySearch{T}(T[], int, int, T, IComparer{T})"/>
+        public int BinarySearch(int index, int length, T item, IComparer<T> comparer)
+        {
+            return Array.BinarySearch(m_array, index, length, item, comparer);
+        }
+
+        /// <inheritdoc cref="Array.BinarySearch{T}(T[], int, int, T)"/>
+        public int BinarySearch(int index, int length, T item)
+        {
+            return Array.BinarySearch(m_array, index, length, item);
+        }
+
+        /// <inheritdoc cref="Array.BinarySearch{T}(T[], T, IComparer{T})"/>
+        public int BinarySearch(T item, IComparer<T> comparer)
+        {
+            return Array.BinarySearch(m_array, item, comparer);
+        }
+
+        /// <inheritdoc cref="Array.BinarySearch{T}(T[], T)"/>
+        public int BinarySearch(T item)
+        {
+            return Array.BinarySearch(m_array, item);
+        }
+
         /// <summary>
         /// Determines whether an element is in the <typeparamref name="T"/>[].
         /// </summary>

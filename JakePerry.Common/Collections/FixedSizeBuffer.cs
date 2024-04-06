@@ -20,6 +20,8 @@ namespace JakePerry.Collections
 
         internal int Count => m_count;
 
+        internal bool IsFull => Count == Capacity;
+
         internal T this[int index]
         {
             get => m_buffer[index];
@@ -60,6 +62,11 @@ namespace JakePerry.Collections
             }
         }
 
+        internal bool Contains(T item)
+        {
+            return Array.IndexOf(m_buffer, item, 0, m_count) > -1;
+        }
+
         internal void CopyTo(T[] array, int offset) => Array.Copy(m_buffer, 0, array, offset, m_count);
 
         internal void CopyTo(T[] array) => CopyTo(array, 0);
@@ -81,6 +88,11 @@ namespace JakePerry.Collections
             }
 
             return false;
+        }
+
+        internal int IndexOf(T item)
+        {
+            return Array.IndexOf(m_buffer, item, 0, m_count);
         }
 
         internal void RemoveAt(int index)
