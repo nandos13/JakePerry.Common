@@ -4,6 +4,10 @@ using System.Collections.Generic;
 
 namespace JakePerry.Collections
 {
+    /// <summary>
+    /// An implementation of <see cref="IDictionary{TKey, TValue}"/> intended for small collections.
+    /// Data is stored in a contiguous buffer rather than hash buckets.
+    /// </summary>
     public sealed class ContiguousDictionary<TKey, TValue> :
         IDictionary<TKey, TValue>,
         IReadOnlyDictionary<TKey, TValue>,
