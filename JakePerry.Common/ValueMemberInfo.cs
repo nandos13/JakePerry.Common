@@ -141,8 +141,10 @@ namespace JakePerry
             {
                 prop.SetValue(obj, value);
             }
-
-            throw GetNullMemberException();
+            else
+            {
+                throw GetNullMemberException();
+            }
         }
 
         /// <summary>
