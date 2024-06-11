@@ -9,14 +9,14 @@ namespace JakePerry.Collections
     /// </summary>
     public sealed class KeyOnlyComparer<TKey, TValue> : IComparer<KeyValuePair<TKey, TValue>>, IEqualityComparer<KeyValuePair<TKey, TValue>>
     {
-        private static readonly KeyOnlyComparer<TKey, TValue> _default = new();
+        private static KeyOnlyComparer<TKey, TValue> _default;
 
         private readonly Comparers<TKey> m_cmp;
 
         /// <summary>
         /// Get a comparer instance which uses <see cref="EqualityComparer{T}.Default"/> to compare keys.
         /// </summary>
-        public static KeyOnlyComparer<TKey, TValue> Default => _default;
+        public static KeyOnlyComparer<TKey, TValue> Default => _default ??= new();
 
         private KeyOnlyComparer()
         {
