@@ -153,7 +153,7 @@ namespace JakePerry
                 _fieldLookup[key] = field;
             }
 
-            if (throwOnError && type is null)
+            if (throwOnError && field is null)
             {
                 throw new ReflectionException($"Unable to find field {name} for declaring type {type}.");
             }
@@ -198,12 +198,68 @@ namespace JakePerry
                 _propertyLookup[key] = property;
             }
 
-            if (throwOnError && type is null)
+            if (throwOnError && property is null)
             {
                 throw new ReflectionException($"Unable to find field {name} for declaring type {type}.");
             }
 
             return property;
+        }
+
+        /// <summary>
+        /// Searches for the specified field or property member, using the specified binding constraints.
+        /// </summary>
+        /// <param name="type">
+        /// The type which defines the member.
+        /// </param>
+        /// <param name="name">
+        /// The name of the member to get.
+        /// </param>
+        /// <param name="flags">
+        /// Binding flags that specify how the search is conducted.
+        /// </param>
+        /// <param name="throwOnError">
+        /// <see langword="true"/> to throw an exception if the member is not found;
+        /// <see langword="false"/> to return null.
+        /// </param>
+        /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="ArgumentException"/>
+        /// <exception cref="ReflectionException"/>
+        internal static ValueMemberInfo GetFieldOrProperty(
+            Type type,
+            string name,
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
+            bool throwOnError = true)
+        {
+            _ = type ?? throw new ArgumentNullException(nameof(type));
+            _ = name ?? throw new ArgumentNullException(nameof(name));
+
+            if (name.Length == 0) throw new ArgumentException("Empty string.", nameof(name));
+
+            var key = new FieldPropertyKey(type, name);
+
+            if (_fieldLookup.TryGetValue(key, out FieldInfo field) && field is not null)
+            {
+                return field;
+            }
+
+            if (_propertyLookup.TryGetValue(key, out PropertyInfo property) && property is not null)
+            {
+                return property;
+            }
+
+            _fieldLookup[key] = field = type.GetField(name, flags);
+            if (field is not null) return field;
+
+            _propertyLookup[key] = property = type.GetProperty(name, flags);
+            if (property is not null) return property;
+
+            if (throwOnError)
+            {
+                throw new ReflectionException($"Unable to find field {name} for declaring type {type}.");
+            }
+
+            return default;
         }
 
         /// <summary>
