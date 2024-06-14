@@ -209,7 +209,6 @@ namespace JakePerry
             if (m_value is null) return StringComparer.Ordinal.GetHashCode((string)null);
             if (m_length == 0) return StringComparer.Ordinal.GetHashCode(string.Empty);
 
-            //int hash = 5381;
             var hash = new HashCode();
             fixed (char* ptr = m_value)
             {
@@ -378,6 +377,11 @@ namespace JakePerry
             Split(substr, separator, output, options);
         }
 
+        public override string ToString()
+        {
+            return CopyString();
+        }
+
         public static bool operator ==(Substring x, Substring y) => x.Equals(y);
 
         public static bool operator !=(Substring x, Substring y) => !(x == y);
@@ -389,5 +393,15 @@ namespace JakePerry
         public static bool operator ==(string x, Substring y) => y.Equals(x);
 
         public static bool operator !=(string x, Substring y) => !(x == y);
+
+        public static implicit operator Substring(string str)
+        {
+            return new Substring(str, 0);
+        }
+
+        public static explicit operator string(Substring substr)
+        {
+            return substr.CopyString();
+        }
     }
 }

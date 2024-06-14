@@ -15,9 +15,9 @@ namespace JakePerry
         private readonly struct TypeKey
         {
             public readonly Assembly assembly;
-            public readonly string typeName;
+            public readonly Substring typeName;
 
-            public TypeKey(Assembly a, string n) { assembly = a; typeName = n; }
+            public TypeKey(Assembly a, Substring n) { assembly = a; typeName = n; }
         }
 
         /// <summary>
@@ -26,9 +26,9 @@ namespace JakePerry
         private readonly struct FieldPropertyKey
         {
             public readonly Type type;
-            public readonly string name;
+            public readonly Substring name;
 
-            public FieldPropertyKey(Type t, string n) { type = t; name = n; }
+            public FieldPropertyKey(Type t, Substring n) { type = t; name = n; }
         }
 
         /// <summary>
@@ -37,12 +37,12 @@ namespace JakePerry
         private readonly struct MethodKey
         {
             public readonly Type type;
-            public readonly string methodName;
+            public readonly Substring methodName;
             public readonly ParamsArray<Type> types;
 
             public MethodKey(
                 Type type,
-                string methodName,
+                Substring methodName,
                 ParamsArray<Type> types = default)
             {
                 this.type = type;
@@ -92,28 +92,41 @@ namespace JakePerry
         /// <exception cref="ArgumentException"/>
         internal static Type GetType(
             Assembly assembly,
-            string typeName,
+            Substring typeName,
             bool throwOnError = true)
         {
             _ = assembly ?? throw new ArgumentNullException(nameof(assembly));
-            _ = typeName ?? throw new ArgumentNullException(nameof(typeName));
 
             if (typeName.Length == 0) throw new ArgumentException("Empty string.", nameof(typeName));
 
             var key = new TypeKey(assembly, typeName);
             if (!_typeLookup.TryGetValue(key, out Type type))
             {
-                type = assembly.GetType(typeName, throwOnError: throwOnError, ignoreCase: false);
+                // Prevent storing keys with substring of a larger string
+                var typeNameStr = typeName.CopyString();
+                key = new TypeKey(assembly, typeNameStr);
+
+                type = assembly.GetType(typeNameStr, throwOnError: throwOnError, ignoreCase: false);
                 _typeLookup[key] = type;
             }
             else if (throwOnError && type is null)
             {
                 // This line will throw, since we know the input parameters are the same as a
                 // previous call that failed with 'throwOnError = false'.
-                return assembly.GetType(typeName, throwOnError: true, ignoreCase: false);
+                return assembly.GetType(typeName.CopyString(), throwOnError: true, ignoreCase: false);
             }
 
             return type;
+        }
+
+        /// <inheritdoc cref="GetType(Assembly, Substring, bool)"/>
+        internal static Type GetType(
+            Assembly assembly,
+            string typeName,
+            bool throwOnError = true)
+        {
+            _ = typeName ?? throw new ArgumentNullException(nameof(typeName));
+            return GetType(assembly, (Substring)typeName, throwOnError);
         }
 
         /// <summary>
@@ -137,19 +150,22 @@ namespace JakePerry
         /// <exception cref="ReflectionException"/>
         internal static FieldInfo GetField(
             Type type,
-            string name,
+            Substring name,
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
             bool throwOnError = true)
         {
             _ = type ?? throw new ArgumentNullException(nameof(type));
-            _ = name ?? throw new ArgumentNullException(nameof(name));
 
             if (name.Length == 0) throw new ArgumentException("Empty string.", nameof(name));
 
             var key = new FieldPropertyKey(type, name);
             if (!_fieldLookup.TryGetValue(key, out FieldInfo field))
             {
-                field = type.GetField(name, flags);
+                // Prevent storing keys with substring of a larger string
+                var nameStr = name.CopyString();
+                key = new FieldPropertyKey(type, nameStr);
+
+                field = type.GetField(nameStr, flags);
                 _fieldLookup[key] = field;
             }
 
@@ -159,6 +175,17 @@ namespace JakePerry
             }
 
             return field;
+        }
+
+        /// <inheritdoc cref="GetField(Type, Substring, BindingFlags, bool)"/>
+        internal static FieldInfo GetField(
+            Type type,
+            string name,
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
+            bool throwOnError = true)
+        {
+            _ = name ?? throw new ArgumentNullException(nameof(name));
+            return GetField(type, (Substring)name, flags, throwOnError);
         }
 
         /// <summary>
@@ -182,19 +209,22 @@ namespace JakePerry
         /// <exception cref="ReflectionException"/>
         internal static PropertyInfo GetProperty(
             Type type,
-            string name,
+            Substring name,
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
             bool throwOnError = true)
         {
             _ = type ?? throw new ArgumentNullException(nameof(type));
-            _ = name ?? throw new ArgumentNullException(nameof(name));
 
             if (name.Length == 0) throw new ArgumentException("Empty string.", nameof(name));
 
             var key = new FieldPropertyKey(type, name);
             if (!_propertyLookup.TryGetValue(key, out PropertyInfo property))
             {
-                property = type.GetProperty(name, flags);
+                // Prevent storing keys with substring of a larger string
+                var nameStr = name.CopyString();
+                key = new FieldPropertyKey(type, nameStr);
+
+                property = type.GetProperty(nameStr, flags);
                 _propertyLookup[key] = property;
             }
 
@@ -204,6 +234,17 @@ namespace JakePerry
             }
 
             return property;
+        }
+
+        /// <inheritdoc cref="GetProperty(Type, Substring, BindingFlags, bool)"/>
+        internal static PropertyInfo GetProperty(
+            Type type,
+            string name,
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
+            bool throwOnError = true)
+        {
+            _ = name ?? throw new ArgumentNullException(nameof(name));
+            return GetProperty(type, (Substring)name, flags, throwOnError);
         }
 
         /// <summary>
@@ -227,39 +268,57 @@ namespace JakePerry
         /// <exception cref="ReflectionException"/>
         internal static ValueMemberInfo GetFieldOrProperty(
             Type type,
-            string name,
+            Substring name,
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
             bool throwOnError = true)
         {
             _ = type ?? throw new ArgumentNullException(nameof(type));
-            _ = name ?? throw new ArgumentNullException(nameof(name));
 
             if (name.Length == 0) throw new ArgumentException("Empty string.", nameof(name));
 
             var key = new FieldPropertyKey(type, name);
 
-            if (_fieldLookup.TryGetValue(key, out FieldInfo field) && field is not null)
-            {
-                return field;
-            }
-
-            if (_propertyLookup.TryGetValue(key, out PropertyInfo property) && property is not null)
-            {
-                return property;
-            }
-
-            _fieldLookup[key] = field = type.GetField(name, flags);
+            bool fieldWasCached = _fieldLookup.TryGetValue(key, out FieldInfo field);
             if (field is not null) return field;
 
-            _propertyLookup[key] = property = type.GetProperty(name, flags);
+            bool propertyWasCached = _propertyLookup.TryGetValue(key, out PropertyInfo property);
             if (property is not null) return property;
+
+            string nameStr = null;
+            if (!fieldWasCached || !propertyWasCached)
+            {
+                nameStr = name.CopyString();
+
+                if (!fieldWasCached)
+                {
+                    _fieldLookup[key] = field = type.GetField(nameStr, flags);
+                    if (field is not null) return field;
+                }
+
+                if (!propertyWasCached)
+                {
+                    _propertyLookup[key] = property = type.GetProperty(nameStr, flags);
+                    if (property is not null) return property;
+                }
+            }
 
             if (throwOnError)
             {
-                throw new ReflectionException($"Unable to find field {name} for declaring type {type}.");
+                throw new ReflectionException($"Unable to find field or property {nameStr ?? name.CopyString()} for declaring type {type}.");
             }
 
             return default;
+        }
+
+        /// <inheritdoc cref="GetFieldOrProperty(Type, Substring, BindingFlags, bool)"/>
+        internal static ValueMemberInfo GetFieldOrProperty(
+            Type type,
+            string name,
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
+            bool throwOnError = true)
+        {
+            _ = name ?? throw new ArgumentNullException(nameof(name));
+            return GetFieldOrProperty(type, (Substring)name, flags, throwOnError);
         }
 
         /// <summary>
@@ -287,29 +346,32 @@ namespace JakePerry
         /// <exception cref="ReflectionException"/>
         internal static MethodInfo GetMethod(
             Type type,
-            string name,
+            Substring name,
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
             ParamsArray<Type> types = default,
             bool throwOnError = true)
         {
             _ = type ?? throw new ArgumentNullException(nameof(type));
-            _ = name ?? throw new ArgumentNullException(nameof(name));
 
             if (name.Length == 0) throw new ArgumentException("Empty string.", nameof(name));
 
             var key = new MethodKey(type, name, types: types);
             if (!_methodLookup.TryGetValue(key, out MethodInfo method))
             {
+                // Prevent storing keys with substring of a larger string
+                var nameStr = name.CopyString();
+                key = new MethodKey(type, nameStr, types: types);
+
                 if (types.Length == 0)
                 {
-                    method = type.GetMethod(name: name, bindingAttr: flags);
+                    method = type.GetMethod(name: nameStr, bindingAttr: flags);
                 }
                 else
                 {
                     var typesArray = types.ToArray();
 
                     method = type.GetMethod(
-                        name: name,
+                        name: nameStr,
                         bindingAttr: flags,
                         binder: null,
                         callConvention: default,
@@ -325,6 +387,18 @@ namespace JakePerry
             }
 
             return method;
+        }
+
+        /// <inheritdoc cref="GetMethod(Type, Substring, BindingFlags, ParamsArray{Type}, bool)"/>
+        internal static MethodInfo GetMethod(
+            Type type,
+            string name,
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
+            ParamsArray<Type> types = default,
+            bool throwOnError = true)
+        {
+            _ = name ?? throw new ArgumentNullException(nameof(name));
+            return GetMethod(type, (Substring)name, flags, types, throwOnError);
         }
 
         /// <summary>
