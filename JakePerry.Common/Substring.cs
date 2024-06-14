@@ -173,7 +173,7 @@ namespace JakePerry
                 return true;
             }
 
-            return string.Compare(m_value, m_start, other, start, length, comparisonType) != 0;
+            return string.Compare(m_value, m_start, other, start, length, comparisonType) == 0;
         }
 
         public bool Equals(string other)
@@ -229,6 +229,16 @@ namespace JakePerry
             }
 
             return hash.ToHashCode();
+        }
+
+        public Substring GetSubstring(int startIndex)
+        {
+            return new Substring(this, startIndex);
+        }
+
+        public Substring GetSubstring(int startIndex, int length)
+        {
+            return new Substring(this, startIndex, length);
         }
 
         /// <summary>
