@@ -51,6 +51,18 @@ namespace JakePerry
             }
         }
 
+        private readonly struct GenericTypeKey
+        {
+            public readonly Type type;
+            public readonly ParamsArray<Type> typeArguments;
+
+            public GenericTypeKey(Type type, ParamsArray<Type> typeArguments)
+            {
+                this.type = type;
+                this.typeArguments = typeArguments;
+            }
+        }
+
         /// <summary>
         /// Unique key for caching generic method lookups.
         /// </summary>
@@ -79,6 +91,7 @@ namespace JakePerry
         private static readonly Dictionary<FieldPropertyKey, FieldInfo> _fieldLookup = new();
         private static readonly Dictionary<FieldPropertyKey, PropertyInfo> _propertyLookup = new();
         private static readonly Dictionary<MethodKey, MethodInfo> _methodLookup = new();
+        private static readonly Dictionary<GenericTypeKey, Type> _genericTypeLookup = new();
         private static readonly Dictionary<GenericMethodKey, MethodInfo> _genericMethodLookup = new();
 
         static ReflectionEx()
@@ -418,6 +431,35 @@ namespace JakePerry
         }
 
         /// <summary>
+        /// Substitutes the elements of an array of types for the type parameters of the
+        /// generic type definition <paramref name="type"/> and returns a <see cref="Type"/> object
+        /// representing the resulting constructed type.
+        /// </summary>
+        /// <param name="type">
+        /// A generic type definition.
+        /// </param>
+        /// <param name="typeArguments">
+        /// An array of types to be substituted for the type parameters of the generic type.
+        /// </param>
+        /// <exception cref="ArgumentNullException"/>
+        /// <seealso cref="Type.MakeGenericType(Type[])"/>
+        internal static Type MakeGenericType(
+            Type type,
+            ParamsArray<Type> typeArguments)
+        {
+            _ = type ?? throw new ArgumentNullException(nameof(type));
+
+            var key = new GenericTypeKey(type, typeArguments);
+            if (!_genericTypeLookup.TryGetValue(key, out Type genericType))
+            {
+                genericType = type.MakeGenericType(typeArguments.ToArray());
+                _genericTypeLookup[key] = genericType;
+            }
+
+            return genericType;
+        }
+
+        /// <summary>
         /// Substitutes the elements of an array of type parameters of the generic method definition
         /// <paramref name="method"/>, and returns a <see cref="MethodInfo"/> object representing
         /// the resulting constructed method.
@@ -426,8 +468,7 @@ namespace JakePerry
         /// A generic method definition.
         /// </param>
         /// <param name="typeArguments">
-        /// An array of types to be substituted for the type parameters of the current generic
-        /// method definition.
+        /// An array of types to be substituted for the type parameters of the generic method definition.
         /// </param>
         /// <exception cref="ArgumentNullException"/>
         /// <seealso cref="MethodInfo.MakeGenericMethod(Type[])"/>
