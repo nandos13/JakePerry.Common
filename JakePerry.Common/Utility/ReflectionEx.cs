@@ -52,6 +52,21 @@ namespace JakePerry
         }
 
         /// <summary>
+        /// Unique key for caching generic method lookups.
+        /// </summary>
+        private readonly struct GenericMethodKey
+        {
+            public readonly MethodInfo method;
+            public readonly ParamsArray<Type> typeArguments;
+
+            public GenericMethodKey(MethodInfo method, ParamsArray<Type> typeArguments)
+            {
+                this.method = method;
+                this.typeArguments = typeArguments;
+            }
+        }
+
+        /// <summary>
         /// An array of rental buffers, where each buffer in the array contains
         /// instances of <see cref="object"/>[] with a length equal to one more than
         /// the index of the buffer in the array.
@@ -64,6 +79,7 @@ namespace JakePerry
         private static readonly Dictionary<FieldPropertyKey, FieldInfo> _fieldLookup = new();
         private static readonly Dictionary<FieldPropertyKey, PropertyInfo> _propertyLookup = new();
         private static readonly Dictionary<MethodKey, MethodInfo> _methodLookup = new();
+        private static readonly Dictionary<GenericMethodKey, MethodInfo> _genericMethodLookup = new();
 
         static ReflectionEx()
         {
@@ -399,6 +415,36 @@ namespace JakePerry
         {
             _ = name ?? throw new ArgumentNullException(nameof(name));
             return GetMethod(type, (Substring)name, flags, types, throwOnError);
+        }
+
+        /// <summary>
+        /// Substitutes the elements of an array of type parameters of the generic method definition
+        /// <paramref name="method"/>, and returns a <see cref="MethodInfo"/> object representing
+        /// the resulting constructed method.
+        /// </summary>
+        /// <param name="method">
+        /// A generic method definition.
+        /// </param>
+        /// <param name="typeArguments">
+        /// An array of types to be substituted for the type parameters of the current generic
+        /// method definition.
+        /// </param>
+        /// <exception cref="ArgumentNullException"/>
+        /// <seealso cref="MethodInfo.MakeGenericMethod(Type[])"/>
+        internal static MethodInfo MakeGenericMethod(
+            MethodInfo method,
+            ParamsArray<Type> typeArguments)
+        {
+            _ = method ?? throw new ArgumentNullException(nameof(method));
+
+            var key = new GenericMethodKey(method, typeArguments);
+            if (!_genericMethodLookup.TryGetValue(key, out MethodInfo genericMethod))
+            {
+                genericMethod = method.MakeGenericMethod(typeArguments.ToArray());
+                _genericMethodLookup[key] = genericMethod;
+            }
+
+            return genericMethod;
         }
 
         /// <summary>
