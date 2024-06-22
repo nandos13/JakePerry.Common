@@ -31,6 +31,8 @@ namespace JakePerry
         /// </summary>
         public int StartIndex => m_start;
 
+        public static Substring Empty => new Substring(string.Empty, 0);
+
         public Substring(string value, int startIndex, int length)
         {
             m_value = value ?? throw new ArgumentNullException(nameof(value));
@@ -108,14 +110,56 @@ namespace JakePerry
         }
 
         /// <summary>
-        /// Get a ReadOnlySpan representation of the substring.
+        /// Creates a new read-only span over a string.
         /// </summary>
-        public ReadOnlySpan<char> AsSpan() => m_value is null ? ReadOnlySpan<char>.Empty : m_value.AsSpan(m_start, m_length);
+        public ReadOnlySpan<char> AsSpan()
+        {
+            return m_value is null ? ReadOnlySpan<char>.Empty : m_value.AsSpan(m_start, m_length);
+        }
+
+        /// <inheritdoc cref="AsSpan()"/>
+        /// <param name="start">
+        /// The index at which to begin this slice.
+        /// </param>
+        public ReadOnlySpan<char> AsSpan(int start)
+        {
+            return new Substring(this, start).AsSpan();
+        }
+
+        /// <inheritdoc cref="AsSpan(int)"/>
+        /// <param name="length">
+        /// The desired length for the slice.
+        /// </param>
+        public ReadOnlySpan<char> AsSpan(int start, int length)
+        {
+            return new Substring(this, start, length).AsSpan();
+        }
 
         /// <summary>
         /// Get a ReadOnlyMemory representation of the substring.
         /// </summary>
-        public ReadOnlyMemory<char> AsMemory() => m_value is null ? ReadOnlyMemory<char>.Empty : m_value.AsMemory(m_start, m_length);
+        public ReadOnlyMemory<char> AsMemory()
+        {
+            return m_value is null ? ReadOnlyMemory<char>.Empty : m_value.AsMemory(m_start, m_length);
+        }
+
+        /// <inheritdoc cref="AsMemory()"/>
+        /// <param name="start">
+        /// The index at which to begin this slice.
+        /// </param>
+        public ReadOnlyMemory<char> AsMemory(int start)
+        {
+            return new Substring(this, start).AsMemory();
+        }
+
+        /// <inheritdoc cref="AsMemory(int)"/>
+        /// <param name="length">
+        /// The desired length for the slice.
+        /// </param>
+        public ReadOnlyMemory<char> AsMemory(int start, int length)
+        {
+            return new Substring(this, start, length).AsMemory();
+        }
 
         /// <summary>
         /// Get a <see cref="string"/> representation of the substring.
