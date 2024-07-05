@@ -489,6 +489,21 @@ namespace JakePerry
         }
 
         /// <summary>
+        /// Get the default value for <paramref name="type"/>.
+        /// </summary>
+        /// <returns>
+        /// Returns <see langword="null"/> if <paramref name="type"/> is a reference type;
+        /// Otherwise, returns the default constructed value if it is a value type.
+        /// </returns>
+        /// <exception cref="ArgumentNullException"/>
+        public static object GetDefaultValue(Type type)
+        {
+            _ = type ?? throw new ArgumentNullException(nameof(type));
+
+            return type.IsValueType ? Activator.CreateInstance(type) : null;
+        }
+
+        /// <summary>
         /// Rent an array with the given length in range [1..4].
         /// </summary>
         /// <remarks>
