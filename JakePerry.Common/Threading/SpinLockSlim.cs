@@ -38,6 +38,12 @@ namespace JakePerry.Threading
         private int m_ownerThreadId;
 
         /// <summary>
+        /// Indicates whether the current thread has acquired the lock.
+        /// </summary>
+        internal bool IsLockedByCurrentThread =>
+            m_lockToken != 0 && m_ownerThreadId == Thread.CurrentThread.ManagedThreadId;
+
+        /// <summary>
         /// Constructor used by the <see cref="Create"/> method
         /// to set correct default values.
         /// </summary>
