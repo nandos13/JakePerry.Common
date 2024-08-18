@@ -104,12 +104,8 @@ namespace JakePerry
         }
 
         /// <summary>
-        /// Get the <see cref="Type"/> object with the specified name in
-        /// <paramref name="assembly"/>.
+        /// Get the <see cref="Type"/> object with the specified name.
         /// </summary>
-        /// <param name="assembly">
-        /// The assembly which defines the type.
-        /// </param>
         /// <param name="typeName">
         /// The full name of the type.
         /// </param>
@@ -117,8 +113,52 @@ namespace JakePerry
         /// <see langword="true"/> to throw an exception if the type is not found;
         /// <see langword="false"/> to return null.
         /// </param>
-        /// <exception cref="ArgumentNullException"/>
         /// <exception cref="ArgumentException"/>
+        internal static Type GetType(
+            Substring typeName,
+            bool throwOnError = true)
+        {
+            if (typeName.Length == 0) throw new ArgumentException("Empty string.", nameof(typeName));
+
+            var key = new TypeKey(null, typeName);
+            if (!_typeLookup.TryGetValue(key, out Type type))
+            {
+                // Prevent storing keys with substring of a larger string
+                var typeNameStr = typeName.CopyString();
+                key = new TypeKey(null, typeNameStr);
+
+                type = Type.GetType(typeNameStr, throwOnError: throwOnError, ignoreCase: false);
+                _typeLookup[key] = type;
+            }
+            else if (throwOnError && type is null)
+            {
+                // This line will throw, since we know the input parameters are the same as a
+                // previous call that failed with 'throwOnError = false'.
+                type = Type.GetType(typeName.CopyString(), throwOnError: true, ignoreCase: false);
+            }
+
+            return type;
+        }
+
+        /// <inheritdoc cref="GetType(Substring, bool)"/>
+        /// <exception cref="ArgumentNullException"/>
+        internal static Type GetType(
+            string typeName,
+            bool throwOnError = true)
+        {
+            _ = typeName ?? throw new ArgumentNullException(nameof(typeName));
+            return GetType((Substring)typeName, throwOnError);
+        }
+
+        /// <summary>
+        /// Get the <see cref="Type"/> object with the specified name in
+        /// <paramref name="assembly"/>.
+        /// </summary>
+        /// <param name="assembly">
+        /// The assembly which defines the type.
+        /// </param>
+        /// <exception cref="ArgumentNullException"/>
+        /// <inheritdoc cref="GetType(Substring, bool)"/>
         internal static Type GetType(
             Assembly assembly,
             Substring typeName,
