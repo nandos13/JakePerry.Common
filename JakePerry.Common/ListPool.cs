@@ -61,6 +61,15 @@ namespace JakePerry
             return GenericListPool<T>._pool.RentInScope(out list);
         }
 
+        /// <inheritdoc cref="ObjectPool{T}.RentInScope(out T)"/>
+        /// <seealso cref="ListPool{T}.RentWithCapacity(int)"/>
+        public static ObjectPool<List<T>>.RentalScope RentInScope<T>(int capacity, out List<T> list)
+        {
+            var pool = GenericListPool<T>._pool;
+            list = pool.RentWithCapacity(capacity);
+            return new ObjectPool<List<T>>.RentalScope(pool, list);
+        }
+
         /// <param name="list"><inheritdoc cref="Return{T}(List{T})"/></param>
         /// <inheritdoc cref="ObjectPool{T}.ReturnOnExitScope(T)"/>
         public static ObjectPool<List<T>>.RentalScope ReturnOnExitScope<T>(List<T> list)
