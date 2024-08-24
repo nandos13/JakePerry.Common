@@ -1,5 +1,7 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.ExceptionServices;
 using System.Text;
 
 namespace JakePerry
@@ -15,7 +17,7 @@ namespace JakePerry
             return false;
         }
 
-        public static string StringifyCollection<T>(
+        internal static string StringifyCollection<T>(
             IEnumerable<T> collection,
             bool printCollectionType = true,
             bool printMetadata = true,
@@ -80,6 +82,32 @@ namespace JakePerry
             }
 
             return sb.ToString();
+        }
+
+        internal static void ReportException(Exception ex, ErrorHandlingPolicy policy)
+        {
+            if (ex is null) return;
+
+            switch (policy)
+            {
+                case ErrorHandlingPolicy.Throw:
+                    {
+                        if (ex.StackTrace is null)
+                        {
+                            throw ex;
+                        }
+                        else
+                        {
+                            ExceptionDispatchInfo.Capture(ex).Throw();
+                        }
+                        break;
+                    }
+                case ErrorHandlingPolicy.Log:
+                    {
+                        JPDebug.LogException(ex);
+                        break;
+                    }
+            }
         }
     }
 }

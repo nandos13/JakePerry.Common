@@ -83,7 +83,7 @@ namespace JakePerry
         /// If the array length is greater than 3, the <see cref="ParamsArray(object[])"/> constructor
         /// is used. If the array can be cast to <see cref="object"/>[] (ie. <typeparamref name="T"/> is
         /// a reference type), the array is captured directly; Otherwise if <paramref name="array"/> cannot
-        /// be cast to <see cref="object"/>[], a new array is allocated in memory &amp; <paramref name="array"/>'s
+        /// be cast to <see cref="object"/>[], <b>a new array is allocated</b> in memory &amp; <paramref name="array"/>'s
         /// contents is copied.
         /// </summary>
         /// <param name="array">Source array.</param>
@@ -110,7 +110,7 @@ namespace JakePerry
         /// If the list count is 3 or less, arguments are captured individually using the
         /// appropriate constructor &amp; no array is captured.
         /// <para/>
-        /// If the list count is greater than 3, a new array is allocated in memory containing a copy of
+        /// If the list count is greater than 3, <b>a new array is allocated</b> in memory containing a copy of
         /// <paramref name="list"/>'s contents &amp; the <see cref="ParamsArray(object[])"/> constructor
         /// is used.
         /// </summary>
@@ -202,7 +202,9 @@ namespace JakePerry
         /// <summary>
         /// Copy contents to a new array.
         /// </summary>
-        /// <remarks>This is an allocating call.</remarks>
+        /// <remarks>
+        /// This is an <b>allocating call</b>.
+        /// </remarks>
         public object[] ToArray()
         {
             var len = Length;
@@ -216,6 +218,19 @@ namespace JakePerry
             }
 
             return copy;
+        }
+
+        /// <summary>
+        /// Construct a typed ParamsArray from the current array.
+        /// </summary>
+        public ParamsArray<object> ToTyped()
+        {
+            int c = Length;
+            if (c == 0) return ParamsArray<object>.Empty;
+            if (c == 1) return new ParamsArray<object>(m_arg0);
+            if (c == 2) return new ParamsArray<object>(m_arg0, m_arg1);
+            if (c == 3) return new ParamsArray<object>(m_arg0, m_arg1, m_arg2);
+            return new ParamsArray<object>(m_args);
         }
 
         public bool Equals(ParamsArray other, IEqualityComparer elementComparer)

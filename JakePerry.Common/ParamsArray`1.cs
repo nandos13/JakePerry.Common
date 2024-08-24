@@ -189,7 +189,9 @@ namespace JakePerry
         /// <summary>
         /// Copy contents to a new array.
         /// </summary>
-        /// <remarks>This is an allocating call.</remarks>
+        /// <remarks>
+        /// This is an <b>allocating call</b>.
+        /// </remarks>
         public T[] ToArray()
         {
             var len = Length;
@@ -203,6 +205,30 @@ namespace JakePerry
             }
 
             return copy;
+        }
+
+        /// <summary>
+        /// Construct a typeless <see cref="ParamsArray"/> from the current array.
+        /// <para/>
+        /// If <typeparamref name="T"/> is a value type, this method incurs boxing of
+        /// each element. Additionally, if the current array's length is greater than 3,
+        /// <b>a new <see cref="object"/>[] will be allocated</b>.
+        /// </summary>
+        public ParamsArray ToTypeless()
+        {
+            int c = Length;
+            if (c == 0) return ParamsArray.Empty;
+            if (c == 1) return new ParamsArray(m_arg0);
+            if (c == 2) return new ParamsArray(m_arg0, m_arg1);
+            if (c == 3) return new ParamsArray(m_arg0, m_arg1, m_arg2);
+
+            if (m_args is not object[] objectArray)
+            {
+                objectArray = new object[c];
+                Array.Copy(m_args, 0, objectArray, 0, c);
+            }
+
+            return new ParamsArray(objectArray);
         }
 
         public bool Equals(ParamsArray<T> other, IEqualityComparer<T> elementComparer)
@@ -256,6 +282,86 @@ namespace JakePerry
         public override int GetHashCode()
         {
             return GetHashCode(EqualityComparer<T>.Default);
+        }
+
+        /// <summary>
+        /// Projects each element of the current sequence into a new form.
+        /// <para/>
+        /// If the array length is 3 or less, arguments are captured individually using the
+        /// appropriate constructor; Otherwise, <b>a new array is allocated</b>.
+        /// </summary>
+        /// <param name="selector">
+        /// A transform function to apply to each source element;
+        /// the second parameter of the function represents the index of the source element.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="selector"/> is <see langword="null"/>.
+        /// </exception>
+        /// <remarks>
+        /// Calling code should be mindful that passing a method or defining an anonymous delegate
+        /// will allocate a new delegate instance; <b>Unnecessary allocations</b> can be mitigated by
+        /// caching the <paramref name="selector"/> delegate where applicable.
+        /// </remarks>
+        public ParamsArray<TOther> Select<TOther>(Func<T, int, TOther> selector)
+        {
+            _ = selector ?? throw new ArgumentNullException(nameof(selector));
+
+            int c = Length;
+            if (c == 0) return ParamsArray<TOther>.Empty;
+
+            var cast0 = selector.Invoke(m_arg0, 0);
+            if (c == 1) return new ParamsArray<TOther>(cast0);
+
+            var cast1 = selector.Invoke(m_arg1, 1);
+            if (c == 2) return new ParamsArray<TOther>(cast0, cast1);
+
+            var cast2 = selector.Invoke(m_arg2, 2);
+            if (c == 3) return new ParamsArray<TOther>(cast0, cast1, cast2);
+
+            var array = new TOther[c];
+            array[0] = cast0;
+            array[1] = cast1;
+            array[2] = cast2;
+
+            for (int i = 3; i < c; ++i)
+            {
+                array[i] = selector.Invoke(GetAtSlow(i), i);
+            }
+
+            return new ParamsArray<TOther>(array);
+        }
+
+        /// <param name="selector">
+        /// A transform function to apply to each element.
+        /// </param>
+        /// <inheritdoc cref="Select{TOther}(Func{T, int, TOther})"/>
+        public ParamsArray<TOther> Select<TOther>(Func<T, TOther> selector)
+        {
+            _ = selector ?? throw new ArgumentNullException(nameof(selector));
+
+            int c = Length;
+            if (c == 0) return ParamsArray<TOther>.Empty;
+
+            var cast0 = selector.Invoke(m_arg0);
+            if (c == 1) return new ParamsArray<TOther>(cast0);
+
+            var cast1 = selector.Invoke(m_arg1);
+            if (c == 2) return new ParamsArray<TOther>(cast0, cast1);
+
+            var cast2 = selector.Invoke(m_arg2);
+            if (c == 3) return new ParamsArray<TOther>(cast0, cast1, cast2);
+
+            var array = new TOther[c];
+            array[0] = cast0;
+            array[1] = cast1;
+            array[2] = cast2;
+
+            for (int i = 3; i < c; ++i)
+            {
+                array[i] = selector.Invoke(GetAtSlow(i));
+            }
+
+            return new ParamsArray<TOther>(array);
         }
 
         public static bool operator ==(ParamsArray<T> arg0, ParamsArray<T> arg1)

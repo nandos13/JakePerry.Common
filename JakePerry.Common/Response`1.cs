@@ -65,14 +65,26 @@ namespace JakePerry
             }
             else
             {
-                return new Response<V>(Response.Failed(), default);
+                return new Response<V>(m_inner, default);
             }
         }
 
-        /// <inheritdoc cref="Response.Throw"/>
-        public void Throw()
+        /// <inheritdoc cref="Response.LogFailure(bool)"/>
+        public void LogFailure(bool logUnknown)
         {
-            m_inner.Throw();
+            m_inner.LogFailure(logUnknown);
+        }
+
+        /// <inheritdoc cref="Response.Throw(bool)"/>
+        public void Throw(bool throwUnknown)
+        {
+            m_inner.Throw(throwUnknown);
+        }
+
+        /// <inheritdoc cref="Response.ReportFailure(ErrorHandlingPolicy, bool)"/>
+        public void ReportFailure(ErrorHandlingPolicy o, bool reportUnknown)
+        {
+            m_inner.ReportFailure(o, reportUnknown);
         }
 
         /// <inheritdoc cref="Response.Failed"/>

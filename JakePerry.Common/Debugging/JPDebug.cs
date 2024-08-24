@@ -1,6 +1,7 @@
 ﻿using JakePerry.Debugging;
 using JakePerry.Threading;
 using System;
+using System.Diagnostics;
 
 namespace JakePerry
 {
@@ -60,6 +61,12 @@ namespace JakePerry
             GetImpl()?.LogError(trace, Stringify(message));
         }
 
+        /// <inheritdoc cref="IDebugImpl.LogError(StackTrace, string)"/>
+        internal static void LogError(StackTrace trace, object message)
+        {
+            GetImpl()?.LogError(trace, Stringify(message));
+        }
+
         /// <inheritdoc cref="IDebugImpl.LogError(bool, string)"/>
         internal static void LogError(object message)
         {
@@ -70,6 +77,12 @@ namespace JakePerry
         internal static void LogInfo(bool trace, object message)
         {
             GetImpl()?.LogInfo(trace, Stringify(message));
+        }
+
+        /// <inheritdoc cref="IDebugImpl.LogException(Exception)"/>
+        internal static void LogException(Exception exception)
+        {
+            GetImpl()?.LogException(exception);
         }
 
         internal static void SetImplementation(IDebugImpl impl)

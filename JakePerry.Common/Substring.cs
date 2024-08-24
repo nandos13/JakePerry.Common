@@ -368,30 +368,27 @@ namespace JakePerry
         /// <param name="separator">
         /// A string that delimits the substrings in this string.
         /// </param>
-        /// <param name="output">
-        /// The output buffer to receive the results.
-        /// </param>
         /// <param name="options">
         /// A bitwise combination of the enumeration values that specifies whether to trim
         /// substrings and include empty substrings.
         /// </param>
-        /// <exception cref="ArgumentNullException"/>
-        public static void Split(Substring value, string separator, List<Substring> output, StringSplitOptions options = StringSplitOptions.None)
+        private static ParamsArray<Substring> SplitInternal(Substring value, string separator, List<Substring> output, bool wantsParamsArray, StringSplitOptions options = StringSplitOptions.None)
         {
-            if (value.m_value is null) return;
-
-            _ = output ?? throw new ArgumentNullException(nameof(output));
+            if (value.m_value is null) return new ParamsArray<Substring>(Substring.Empty);
 
             if ((separator?.Length ?? 0) == 0)
             {
-                output.Add(value);
-                return;
+                output?.Add(value);
+                return new ParamsArray<Substring>(value);
             }
 
             bool keepEmpty = (options & StringSplitOptions.RemoveEmptyEntries) == 0;
             int bound = value.m_start + value.m_length;
 
-            int i = 0;
+            Substring v0 = default, v1 = default, v2 = default;
+            List<Substring> list = null;
+
+            int i = 0, j = 0;
             while (i < value.m_length)
             {
                 int index = i + value.m_start;
@@ -403,12 +400,95 @@ namespace JakePerry
                     next = bound;
                 }
 
+                Substring? s = null;
                 int size = next - index;
-                if (size > 0) output.Add(new Substring(value, index, size));
-                else if (keepEmpty) output.Add(new Substring(string.Empty, 0, 0));
+                if (size > 0)
+                {
+                    s = new Substring(value, index, size);
+                }
+                else if (keepEmpty)
+                {
+                    s = new Substring(string.Empty, 0, 0);
+                }
+
+                if (s.HasValue)
+                {
+                    if (j == 0) v0 = s.Value;
+                    else if (j == 1) v1 = s.Value;
+                    else if (j == 2) v2 = s.Value;
+                    else if (wantsParamsArray) (list ??= new()).Add(s.Value);
+
+                    ++j;
+                    output?.Add(s.Value);
+                }
 
                 i += size + separator.Length;
             }
+
+            if (list is not null)
+            {
+                var array = new Substring[list.Count + 3];
+
+                array[0] = v0;
+                array[1] = v1;
+                array[2] = v2;
+
+                list.CopyTo(array, 3);
+
+                return new ParamsArray<Substring>(array);
+            }
+            else if (j == 1)
+            {
+                return new ParamsArray<Substring>(v0);
+            }
+            else if (j == 2)
+            {
+                return new ParamsArray<Substring>(v0, v1);
+            }
+            else if (j == 3)
+            {
+                return new ParamsArray<Substring>(v0, v1, v2);
+            }
+
+            return new ParamsArray<Substring>(Substring.Empty);
+        }
+
+        /// <inheritdoc cref="SplitInternal(Substring, string, List{Substring}, bool, StringSplitOptions)"/>
+        internal static ParamsArray<Substring> Split(Substring value, string separator, StringSplitOptions options = StringSplitOptions.None)
+        {
+            return SplitInternal(value, separator, null, true, options);
+        }
+
+        /// <inheritdoc cref="Split(Substring, string, StringSplitOptions)"/>
+        /// <param name="start">
+        /// Index of <paramref name="value"/> at which to start.
+        /// </param>
+        /// <param name="length">
+        /// The number of characters to consider in <paramref name="value"/>.
+        /// </param>
+        internal static ParamsArray<Substring> Split(string value, int start, int length, string separator, StringSplitOptions options = StringSplitOptions.None)
+        {
+            var substr = new Substring(value, start, length);
+            return Split(substr, separator, options);
+        }
+
+        /// <inheritdoc cref="Split(string, int, int, string, StringSplitOptions)"/>
+        internal static ParamsArray<Substring> Split(string value, string separator, StringSplitOptions options = StringSplitOptions.None)
+        {
+            var substr = new Substring(value, 0, value?.Length ?? 0);
+            return Split(substr, separator, options);
+        }
+
+        /// <param name="output">
+        /// The output buffer to receive the results.
+        /// </param>
+        /// <exception cref="ArgumentNullException"/>
+        /// <inheritdoc cref="SplitInternal(Substring, string, List{Substring}, bool, StringSplitOptions)"/>
+        public static void Split(Substring value, string separator, List<Substring> output, StringSplitOptions options = StringSplitOptions.None)
+        {
+            _ = output ?? throw new ArgumentNullException(nameof(output));
+
+            SplitInternal(value, separator, output, false, options);
         }
 
         /// <inheritdoc cref="Split(Substring, string, List{Substring}, StringSplitOptions)"/>
