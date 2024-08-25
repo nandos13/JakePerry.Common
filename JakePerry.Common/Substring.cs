@@ -67,13 +67,12 @@ namespace JakePerry
                 throw new ArgumentOutOfRangeException(nameof(startIndex));
             }
 
-            startIndex += other.m_start;
-
             if (startIndex + length > len)
             {
                 throw new ArgumentOutOfRangeException(nameof(length));
             }
 
+            startIndex += other.m_start;
             this = new Substring(other.m_value, startIndex, length);
         }
 
@@ -393,7 +392,7 @@ namespace JakePerry
             {
                 int index = i + value.m_start;
 
-                int next = value.m_value.IndexOf(separator, index, StringComparison.Ordinal);
+                int next = value.m_value.IndexOf(separator, index, value.m_length - i, StringComparison.Ordinal);
 
                 if (next == -1 || next > bound)
                 {
@@ -404,7 +403,7 @@ namespace JakePerry
                 int size = next - index;
                 if (size > 0)
                 {
-                    s = new Substring(value, index, size);
+                    s = new Substring(value, i, size);
                 }
                 else if (keepEmpty)
                 {
