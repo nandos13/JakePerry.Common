@@ -37,7 +37,7 @@ namespace JakePerry
         {
             m_value = value ?? throw new ArgumentNullException(nameof(value));
 
-            if (startIndex < 0 || startIndex >= value.Length)
+            if (startIndex < 0 || startIndex > value.Length)
             {
                 throw new ArgumentOutOfRangeException(nameof(startIndex));
             }

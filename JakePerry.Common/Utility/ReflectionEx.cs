@@ -90,6 +90,7 @@ namespace JakePerry
         private static readonly Dictionary<TypeKey, Type> _typeLookup = new();
         private static readonly Dictionary<FieldPropertyKey, FieldInfo> _fieldLookup = new();
         private static readonly Dictionary<FieldPropertyKey, PropertyInfo> _propertyLookup = new();
+        private static readonly Dictionary<MethodKey, ConstructorInfo> _ctorLookup = new();
         private static readonly Dictionary<MethodKey, MethodInfo> _methodLookup = new();
         private static readonly Dictionary<GenericTypeKey, Type> _genericTypeLookup = new();
         private static readonly Dictionary<GenericMethodKey, MethodInfo> _genericMethodLookup = new();
@@ -388,6 +389,62 @@ namespace JakePerry
         {
             _ = name ?? throw new ArgumentNullException(nameof(name));
             return GetFieldOrProperty(type, (Substring)name, flags, throwOnError);
+        }
+
+        /// <summary>
+        /// Searches for a constructor whose parameters match the specified argument types.
+        /// </summary>
+        /// <param name="type">
+        /// The type which defines the method.
+        /// </param>
+        /// <param name="flags">
+        /// Binding flags that specify how the search is conducted.
+        /// </param>
+        /// <param name="types">
+        /// An array of <see cref="Type"/> objects representing the number, order, and type of the
+        /// parameters for the constructor to get.
+        /// </param>
+        /// <param name="throwOnError">
+        /// <see langword="true"/> to throw an exception if the constructor is not found;
+        /// <see langword="false"/> to return null.
+        /// </param>
+        /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="ReflectionException"/>
+        internal static ConstructorInfo GetConstructor(
+            Type type,
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
+            ParamsArray<Type> types = default,
+            bool throwOnError = true)
+        {
+            _ = type ?? throw new ArgumentNullException(nameof(type));
+
+            var key = new MethodKey(type, string.Empty, types: types);
+            if (!_ctorLookup.TryGetValue(key, out ConstructorInfo ctor))
+            {
+                if (types.Length == 0)
+                {
+                    ctor = type.GetConstructor(flags, null, Array.Empty<Type>(), null);
+                }
+                else
+                {
+                    var typesArray = types.ToArray();
+
+                    ctor = type.GetConstructor(
+                        bindingAttr: flags,
+                        binder: null,
+                        callConvention: default,
+                        types: typesArray,
+                        modifiers: null);
+                }
+                _ctorLookup[key] = ctor;
+            }
+
+            if (throwOnError && ctor is null)
+            {
+                throw new ReflectionException($"Unable to find matching constructor for declaring type {type}.");
+            }
+
+            return ctor;
         }
 
         /// <summary>

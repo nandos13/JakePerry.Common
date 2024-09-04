@@ -5,11 +5,14 @@ using System.Collections.Generic;
 namespace JakePerry
 {
     /// <summary>
-    /// Defines a base class for a threadsafe pool of reusable objects.
+    /// Defines a threadsafe pool of reusable objects.
     /// </summary>
-    public abstract class ObjectPool<T> where T : class
+    public class ObjectPool<T> where T : class
     {
         private readonly List<T> m_pool = new();
+
+        private readonly Func<T> m_activator;
+        private readonly Action<T> m_teardownCallback;
 
         private SpinLockSlim m_lock = SpinLockSlim.Create();
 
@@ -88,13 +91,108 @@ namespace JakePerry
         }
 
         /// <summary>
-        /// When overridden in a derived class, activates a new instance
-        /// of type <typeparamref name="T"/>.
+        /// 
+        /// </summary>
+        /// <param name="activator">
+        /// A delegate function which is used to activate a new object instance
+        /// when the pool is empty.
+        /// </param>
+        /// <param name="teardownCallback">
+        /// [Optional] A delegate which handles any necessary teardown logic
+        /// before an object instance is returned to the pool.
+        /// </param>
+        /// <param name="dontThrowOnActivatorNull">
+        /// Indicates whether an exception should not be thrown if <paramref name="activator"/>
+        /// is <see langword="null"/>.
+        /// <para/>
+        /// A <see langword="null"/> <paramref name="activator"/> is valid when a derived class overrides
+        /// the <see cref="Activate"/> method and does not invoke the base method implementation,
+        /// in which case this argument should be <see langword="true"/>.
+        /// In all other cases, a <see langword="null"/> <paramref name="activator"/> is invalid and this
+        /// argument should remain <see langword="false"/>.
+        /// </param>
+        protected ObjectPool(Func<T> activator, Action<T> teardownCallback, bool dontThrowOnActivatorNull = false)
+        {
+            if (!dontThrowOnActivatorNull && activator is null)
+            {
+                throw new ArgumentNullException(nameof(activator));
+            }
+
+            m_activator = activator;
+            m_teardownCallback = teardownCallback;
+        }
+
+        /// <inheritdoc cref="ObjectPool{T}(Func{T}, Action{T}, bool)"/>
+        public ObjectPool(Func<T> activator, Action<T> teardownCallback)
+            : this(activator, teardownCallback, false)
+        { }
+
+        /// <inheritdoc cref="ObjectPool{T}(Func{T}, Action{T}, bool)"/>
+        public ObjectPool(Func<T> activator)
+            : this(activator, null, false)
+        { }
+
+        /// <summary>
+        /// Constructs a new instance of an object pool.
+        /// <para/>
+        /// This constructor uses the default constructor to activate new object
+        /// instances when the pool is empty and as such cannot be used if
+        /// <typeparamref name="T"/> does not have a publicly available default constructor.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">
+        /// <typeparamref name="T"/> does not provide a publicly accessible default constructor.
+        /// </exception>
+        /// <inheritdoc cref="ObjectPool{T}(Func{T}, Action{T}, bool)"/>
+        public ObjectPool(Action<T> teardownCallback)
+        {
+            var ctor = ReflectionEx.GetConstructor(typeof(T), throwOnError: false);
+
+            // The default constructor ObjectPool() may be implicitly invoked by
+            // derived class constructors. In such case, a null constructor may be valid,
+            // as the derived class likely overrides the Activate method; if it doesn't,
+            // an exception is thrown at runtime during activation.
+            // 
+            // In all other cases a missing default constructor is an exception, and user
+            // code must provide an activation func.
+            if (ctor is null && this.GetType() != typeof(ObjectPool<T>))
+            {
+                // TODO: Static analysis would be handy here to detect invalid uses of this construcor.
+                throw new InvalidOperationException(
+                    $"No publicly accessible default constructor exists for type {typeof(T)}" +
+                    $". An activator function must be supplied");
+            }
+
+            Func<T> activator = () =>
+            {
+                return (T)ctor.Invoke(Array.Empty<object>());
+            };
+
+            m_activator = activator;
+            m_teardownCallback = teardownCallback;
+        }
+
+        /// <inheritdoc cref="ObjectPool{T}(Action{T})"/>
+        public ObjectPool() : this(teardownCallback: null) { }
+
+        /// <summary>
+        /// Activates a new instance of type <typeparamref name="T"/>.
         /// </summary>
         /// <returns>
         /// The object instance that was activated.
         /// </returns>
-        protected abstract T Activate();
+        protected virtual T Activate()
+        {
+            var func = m_activator;
+            if (func is null)
+            {
+                throw new NotImplementedException(
+                    "ObjectPool's activator function is null. This can occur if a derived class does not provide " +
+                    "an activator function to the base class during construction and erroneously invokes the " +
+                    "base class Activate method implementation.");
+            }
+
+            return func.Invoke();
+        }
 
         /// <summary>
         /// Invoked before a rented object is returned into the pool for reuse.
@@ -102,7 +200,10 @@ namespace JakePerry
         /// <param name="obj">
         /// The rented object that is returning to the pool.
         /// </param>
-        protected virtual void BeforeReturnToPool(T obj) { }
+        protected virtual void BeforeReturnToPool(T obj)
+        {
+            m_teardownCallback?.Invoke(obj);
+        }
 
         /// <summary>
         /// Clear the pool.
