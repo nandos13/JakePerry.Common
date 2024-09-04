@@ -352,10 +352,11 @@ namespace JakePerry
                 }
 
                 // Don't exceed the maximum capacity.
-                if (m_pool.Count < m_pool.Capacity)
+                var pool = m_pool;
+                if (pool.Capacity == 0 || pool.Count < pool.Capacity)
                 {
                     BeforeReturnToPool(obj);
-                    m_pool.Add(obj);
+                    pool.Add(obj);
                 }
             }
             finally { m_lock.ReleaseLock(acquiredLock); }
