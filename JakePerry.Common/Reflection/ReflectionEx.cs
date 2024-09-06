@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace JakePerry
+namespace JakePerry.Reflection
 {
     /// <summary>
     /// A collection of helpful methods related to Reflection.

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace JakePerry
+namespace JakePerry.Reflection
 {
     /// <summary>
     /// An exception resulting from a Reflection failure.
