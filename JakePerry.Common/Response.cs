@@ -65,11 +65,7 @@ namespace JakePerry
             {
                 if (ex.StackTrace is null)
                 {
-                    try
-                    {
-                        throw ex;
-                    }
-                    catch (Exception) { }
+                    ExceptionUtility.SetStackTrace(ex, Environment.StackTrace);
                 }
 
                 m_exception = ExceptionDispatchInfo.Capture(ex);
