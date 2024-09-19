@@ -10,7 +10,7 @@ namespace JakePerry
     /// however <see cref="ReadOnlySpan{T}"/> is a ref struct which imposes some limitations.
     /// This type is intended for use when said limitations are incompatible with desired code design.
     /// </summary>
-    public readonly struct Substring : IComparable<string>, IComparable<Substring>, IEquatable<string>, IEquatable<Substring>
+    public readonly partial struct Substring : IComparable<string>, IComparable<Substring>, IEquatable<string>, IEquatable<Substring>
     {
         private readonly string m_value;
         private readonly int m_start;
