@@ -105,7 +105,7 @@ namespace JakePerry.Collections
             {
                 if (add)
                 {
-                    ThrowHelperEx.ThrowArgumentException(ThrowHelperEx.Msg.Argument_AddingDuplicate);
+                    throw new ArgumentException(SR.Argument_AddingDuplicate);
                 }
                 else
                 {
@@ -175,7 +175,7 @@ namespace JakePerry.Collections
 
             if (array.Length - arrayIndex < buffer.Count)
             {
-                ThrowHelperEx.ThrowArgumentException(ThrowHelperEx.Msg.Arg_ArrayPlusOffTooSmall);
+                throw new ArgumentException(SR.Arg_ArrayPlusOffTooSmall);
             }
         }
 
@@ -269,9 +269,9 @@ namespace JakePerry.Collections
                 m_dictionary = dictionary ?? throw new ArgumentNullException(nameof(dictionary));
             }
 
-            void ICollection<TKey>.Add(TKey item) { ThrowHelperEx.ThrowNotSupportedException(ThrowHelperEx.Msg.NotSupported_KeyCollectionSet); }
+            void ICollection<TKey>.Add(TKey item) { throw new NotSupportedException(SR.NotSupported_KeyCollectionSet); }
 
-            void ICollection<TKey>.Clear() { ThrowHelperEx.ThrowNotSupportedException(ThrowHelperEx.Msg.NotSupported_KeyCollectionSet); }
+            void ICollection<TKey>.Clear() { throw new NotSupportedException(SR.NotSupported_KeyCollectionSet); }
 
             bool ICollection<TKey>.Contains(TKey item) { return m_dictionary.ContainsKey(item); }
 
@@ -287,7 +287,7 @@ namespace JakePerry.Collections
                 }
             }
 
-            bool ICollection<TKey>.Remove(TKey item) { ThrowHelperEx.ThrowNotSupportedException(ThrowHelperEx.Msg.NotSupported_KeyCollectionSet); return false; }
+            bool ICollection<TKey>.Remove(TKey item) { throw new NotSupportedException(SR.NotSupported_KeyCollectionSet); }
 
             public Enumerator GetEnumerator()
             {
@@ -349,9 +349,9 @@ namespace JakePerry.Collections
                 m_dictionary = dictionary ?? throw new ArgumentNullException(nameof(dictionary));
             }
 
-            void ICollection<TValue>.Add(TValue item) { ThrowHelperEx.ThrowNotSupportedException(ThrowHelperEx.Msg.NotSupported_KeyCollectionSet); }
+            void ICollection<TValue>.Add(TValue item) { throw new NotSupportedException(SR.NotSupported_KeyCollectionSet); }
 
-            void ICollection<TValue>.Clear() { ThrowHelperEx.ThrowNotSupportedException(ThrowHelperEx.Msg.NotSupported_KeyCollectionSet); }
+            void ICollection<TValue>.Clear() { throw new NotSupportedException(SR.NotSupported_KeyCollectionSet); }
 
             bool ICollection<TValue>.Contains(TValue item) { return m_dictionary.ContainsValue(item); }
 
@@ -367,7 +367,7 @@ namespace JakePerry.Collections
                 }
             }
 
-            bool ICollection<TValue>.Remove(TValue item) { ThrowHelperEx.ThrowNotSupportedException(ThrowHelperEx.Msg.NotSupported_KeyCollectionSet); return false; }
+            bool ICollection<TValue>.Remove(TValue item) { throw new NotSupportedException(SR.NotSupported_KeyCollectionSet); }
 
             public Enumerator GetEnumerator()
             {

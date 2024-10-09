@@ -6,9 +6,6 @@ namespace JakePerry
 {
     public static class ExceptionUtility
     {
-        private static string Exception_EndStackTraceFromPreviousThrow
-            => EnvironmentEx.GetResourceString("Exception_EndStackTraceFromPreviousThrow");
-
         public static void SetStackTrace(Exception exception, string stackTrace)
         {
             const BindingFlags kFlags = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -18,7 +15,7 @@ namespace JakePerry
             var field = ReflectionEx.GetField(typeof(Exception), "_remoteStackTraceString", kFlags);
 
             var nl = Environment.NewLine;
-            stackTrace += string.Concat(nl, Exception_EndStackTraceFromPreviousThrow, nl);
+            stackTrace += string.Concat(nl, SR.Exception_EndStackTraceFromPreviousThrow, nl);
 
             field.SetValue(exception, stackTrace);
         }

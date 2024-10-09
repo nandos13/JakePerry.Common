@@ -1,5 +1,8 @@
-﻿using System;
+﻿using JakePerry.Collections;
+using JakePerry.Text;
+using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace JakePerry
@@ -7,118 +10,374 @@ namespace JakePerry
     public partial struct Substring
     {
         /// <summary>
-        /// Splits a string into substrings that are based on the provided string separator.
+        /// Processes a split substring per the given <paramref name="options"/>, and adds
+        /// it to the <paramref name="splits"/> list unless the substring is empty and empty
+        /// entries should be ignored.
         /// </summary>
-        /// <param name="value">
-        /// Defines the source string to be split.
-        /// </param>
-        /// <param name="separator">
-        /// A string that delimits the substrings in this string.
-        /// </param>
-        /// <param name="options">
-        /// A bitwise combination of the enumeration values that specifies whether to trim
-        /// substrings and include empty substrings.
-        /// </param>
-        private static ParamsArray<Substring> SplitInternal(Substring value, string separator, List<Substring> output, bool wantsParamsArray, StringSplitOptions options = StringSplitOptions.None)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool ProcessSplit(
+            in Substring s,
+            int initialOffset,
+            scoped ref StackList<(int Offset, int Count)> splits,
+            StringSplitOptions options)
         {
-            if (value.m_value is null) return new ParamsArray<Substring>(Substring.Empty);
-
-            if ((separator?.Length ?? 0) == 0)
+            if (!s.IsEmpty || (options & StringSplitOptions.RemoveEmptyEntries) == 0)
             {
-                output?.Add(value);
-                return new ParamsArray<Substring>(value);
+                splits.Append((s.StartIndex - initialOffset, s.Length));
+                return true;
             }
-
-            bool keepEmpty = (options & StringSplitOptions.RemoveEmptyEntries) == 0;
-            int bound = value.m_start + value.m_length;
-
-            Substring v0 = default, v1 = default, v2 = default;
-            List<Substring> list = null;
-
-            int i = 0, j = 0;
-            while (i < value.m_length)
-            {
-                int index = i + value.m_start;
-
-                int next = value.m_value.IndexOf(separator, index, value.m_length - i, StringComparison.Ordinal);
-
-                if (next == -1 || next > bound)
-                {
-                    next = bound;
-                }
-
-                Substring? s = null;
-                int size = next - index;
-                if (size > 0)
-                {
-                    s = new Substring(value, i, size);
-                }
-                else if (keepEmpty)
-                {
-                    s = new Substring(string.Empty, 0, 0);
-                }
-
-                if (s.HasValue)
-                {
-                    if (j == 0) v0 = s.Value;
-                    else if (j == 1) v1 = s.Value;
-                    else if (j == 2) v2 = s.Value;
-                    else if (wantsParamsArray) (list ??= new()).Add(s.Value);
-
-                    ++j;
-                    output?.Add(s.Value);
-                }
-
-                i += size + separator.Length;
-            }
-
-            if (list is not null)
-            {
-                var array = new Substring[list.Count + 3];
-
-                array[0] = v0;
-                array[1] = v1;
-                array[2] = v2;
-
-                list.CopyTo(array, 3);
-
-                return new ParamsArray<Substring>(array);
-            }
-            else if (j == 1)
-            {
-                return new ParamsArray<Substring>(v0);
-            }
-            else if (j == 2)
-            {
-                return new ParamsArray<Substring>(v0, v1);
-            }
-            else if (j == 3)
-            {
-                return new ParamsArray<Substring>(v0, v1, v2);
-            }
-
-            return new ParamsArray<Substring>(Substring.Empty);
+            return false;
         }
 
-        /// <inheritdoc cref="SplitInternal(Substring, string, List{Substring}, bool, StringSplitOptions)"/>
-        internal ParamsArray<Substring> Split(string separator, StringSplitOptions options = StringSplitOptions.None)
+        /// <summary>
+        /// Once the split delimiters are known, this method actually finds and processes the
+        /// substring splits.
+        /// </summary>
+        private static void SplitFromKnownIndexes(
+            in Substring s,
+            int initialOffset,
+            scoped ref StackList<(int Offset, int Count)> splits,
+            scoped ReadOnlySpan<int> indexes,
+            scoped ReadOnlySpan<int> lengths,
+            int len,
+            int count,
+            StringSplitOptions options)
         {
-            return SplitInternal(this, separator, null, true, options);
+            int offset = 0;
+            int splitCount = 0;
+
+            Substring current;
+
+            for (int i = 0; i < indexes.Length; i++)
+            {
+                current = s.Slice(offset, indexes[i] - offset);
+                if (ProcessSplit(current, initialOffset, ref splits, options))
+                {
+                    splitCount++;
+                }
+
+                offset = indexes[i] + (lengths.IsEmpty ? len : lengths[i]);
+                if (splitCount == count - 1)
+                {
+                    if ((options & StringSplitOptions.RemoveEmptyEntries) != 0)
+                        while (++i < indexes.Length)
+                        {
+                            current = s.Slice(offset, indexes[i] - offset);
+                            if (!current.IsEmpty) break;
+
+                            offset = indexes[i] + (lengths.IsEmpty ? len : lengths[i]);
+                        }
+
+                    break;
+                }
+            }
+
+            current = s.Slice(offset);
+            ProcessSplit(current, initialOffset, ref splits, options);
         }
 
+        private static void SplitInternal(
+            Substring s,
+            scoped ref StackList<(int Offset, int Count)> splits,
+            scoped ReadOnlySpan<char> separators,
+            int count,
+            StringSplitOptions options)
+        {
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), count, SR.ArgumentOutOfRange_NeedNonNegNum);
+            }
+
+            int initialOffset = s.StartIndex;
+
+            if (count <= 1 || s.IsEmpty)
+            {
+                ProcessSplit(s, initialOffset, ref splits, options);
+                return;
+            }
+
+            var indexes = new StackList<int>(stackalloc int[Math.Min(s.Length, 128)]);
+
+            if (separators.IsEmpty)
+            {
+                StringUtility.FindWhitespaceChars(s.AsSpan(), ref indexes);
+            }
+            else
+            {
+                StringUtility.FindSeparatorChars(s.AsSpan(), separators, ref indexes);
+            }
+
+            var indexSpan = indexes.AsSpan();
+            if (indexSpan.IsEmpty)
+            {
+                ProcessSplit(s, initialOffset, ref splits, options);
+                return;
+            }
+
+            SplitFromKnownIndexes(s, initialOffset, ref splits, indexSpan, default, 1, count, options);
+
+            indexes.Dispose();
+        }
+
+        private static void SplitInternal(
+            Substring s,
+            scoped ref StackList<(int Offset, int Count)> splits,
+            string separator,
+            scoped ReadOnlySpan<string> separators,
+            int count,
+            StringSplitOptions options)
+        {
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), count, SR.ArgumentOutOfRange_NeedNonNegNum);
+            }
+
+            JPDebug.Assert(separator is not null || !separators.IsEmpty);
+
+            int initialOffset = s.StartIndex;
+
+            // This value is -1 if we're using multiple separators
+            int sepLength = separator?.Length ?? -1;
+
+            if (count <= 1 || s.IsEmpty || sepLength == 0)
+            {
+                ProcessSplit(s, initialOffset, ref splits, options);
+                return;
+            }
+
+            int allocSize = Math.Min(s.Length, 128);
+
+            var indexes = new StackList<int>(stackalloc int[allocSize]);
+            var lengths = separator is null ? default : new StackList<int>(stackalloc int[allocSize]);
+
+            if (separator is not null)
+            {
+                StringUtility.FindSeparatorString(s.AsSpan(), separator, ref indexes);
+            }
+            else
+            {
+                StringUtility.FindSeparatorStrings(s.AsSpan(), separators, ref indexes, ref lengths);
+            }
+
+            var indexSpan = indexes.AsSpan();
+            if (indexSpan.IsEmpty)
+            {
+                ProcessSplit(s, initialOffset, ref splits, options);
+                return;
+            }
+
+            SplitFromKnownIndexes(s, initialOffset, ref splits, indexSpan, lengths.AsSpan(), sepLength, count, options);
+
+            indexes.Dispose();
+            lengths.Dispose();
+        }
+
+        /// <summary>
+        /// Split the string using the specified delimiting characters or strings.
+        /// </summary>
+        /// <param name="splits">
+        /// A stack list which receives the offset and count of splits, relative to the current
+        /// Substring instance. A new Substring can be constructed from this value via
+        /// <c>new Substring(s, split.Offset, split.Count)</c>, where <c>s</c> is the current
+        /// Substring and <c>split</c> is an element in the <paramref name="splits"/> list.
+        /// </param>
+        /// <param name="separator">The string or char that delimits the substrings in this instance.</param>
+        /// <param name="separators">A span of strings or chars that delimits the substrings in this instance.</param>
+        /// <param name="count">The maximum number of elements expected in the output.</param>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter")]
+        private static void Split_DocumentationStub(object splits, object separator, object separators, object count)
+        {
+            /* I was unable to get 'inheritdoc' documentation working when the documentation existed
+             * on one of the split methods below. I believe this is related to the tuple (int, int)
+             * type used in the splits output parameter.
+             * As such, I've put the documentation on this empty method as a workaround.
+             */
+        }
+
+        /// <inheritdoc cref="Split_DocumentationStub"/>
+        internal unsafe void Split(
+            scoped ref StackList<(int Offset, int Count)> splits,
+            char separator,
+            int? count = null,
+            StringSplitOptions options = StringSplitOptions.None)
+        {
+            void* ptr = &separator;
+            SplitInternal(this, ref splits, new ReadOnlySpan<char>(ptr, 1), count ?? int.MaxValue, options);
+        }
+
+        /// <inheritdoc cref="Split_DocumentationStub"/>
+        internal void Split(
+            scoped ref StackList<(int Offset, int Count)> splits,
+            scoped ReadOnlySpan<char> separators,
+            int? count = null,
+            StringSplitOptions options = StringSplitOptions.None)
+        {
+            SplitInternal(this, ref splits, separators, count ?? int.MaxValue, options);
+        }
+
+        /// <inheritdoc cref="Split_DocumentationStub"/>
+        internal void Split(
+            scoped ref StackList<(int Offset, int Count)> splits,
+            string separator,
+            int? count = null,
+            StringSplitOptions options = StringSplitOptions.None)
+        {
+            int c = count ?? int.MaxValue;
+            if (separator is null)
+            {
+                SplitInternal(this, ref splits, ReadOnlySpan<char>.Empty, c, options);
+            }
+            else
+            {
+                SplitInternal(this, ref splits, separator, ReadOnlySpan<string>.Empty, c, options);
+            }
+        }
+
+        /// <inheritdoc cref="Split_DocumentationStub"/>
+        internal void Split(
+            scoped ref StackList<(int Offset, int Count)> splits,
+            scoped ReadOnlySpan<string> separators,
+            int? count = null,
+            StringSplitOptions options = StringSplitOptions.None)
+        {
+            int c = count ?? int.MaxValue;
+            if (separators.IsEmpty)
+            {
+                SplitInternal(this, ref splits, ReadOnlySpan<char>.Empty, c, options);
+            }
+            else if (separators.Length == 1)
+            {
+                var separator = separators[0];
+                if (separator is null)
+                {
+                    SplitInternal(this, ref splits, ReadOnlySpan<char>.Empty, c, options);
+                }
+                else
+                {
+                    SplitInternal(this, ref splits, separator, ReadOnlySpan<string>.Empty, c, options);
+                }
+            }
+            else
+            {
+                SplitInternal(this, ref splits, null, separators, c, options);
+            }
+        }
+
+        private Substring[] ConsolidateSplitArray(scoped ref StackList<(int Offset, int Count)> splits)
+        {
+            var span = splits.AsSpan();
+            if (span.IsEmpty) return Array.Empty<Substring>();
+
+            var result = new Substring[span.Length];
+            for (int i = 0; i < result.Length; ++i)
+            {
+                (int Offset, int Count) = span[i];
+                result[i] = new Substring(this, Offset, Count);
+            }
+
+            splits.Dispose();
+
+            return result;
+        }
+
+        private void ConsolidateSplitList(scoped ref StackList<(int Offset, int Count)> splits, List<Substring> output)
+        {
+            var span = splits.AsSpan();
+            foreach ((int Offset, int Count) in splits.AsSpan())
+            {
+                output.Add(new Substring(this, Offset, Count));
+            }
+
+            splits.Dispose();
+        }
+
+        /// <inheritdoc cref="Split_DocumentationStub"/>
+        /// <returns>
+        /// An array that contains substrings from this instance that are delimited by the specified separator(s).
+        /// If <paramref name="count"/> is specified, the array will contain this number of elements at most.
+        /// </returns>
+        public Substring[] Split(char separator, int? count = null, StringSplitOptions options = StringSplitOptions.None)
+        {
+            var splits = new StackList<(int Offset, int Count)>(stackalloc (int, int)[Math.Min(this.Length, 128)]);
+            Split(ref splits, separator, count, options);
+
+            return ConsolidateSplitArray(ref splits);
+        }
+
+        /// <inheritdoc cref="Split(char, int?, StringSplitOptions)"/>
+        public Substring[] Split(ReadOnlySpan<char> separators, int? count = null, StringSplitOptions options = StringSplitOptions.None)
+        {
+            var splits = new StackList<(int Offset, int Count)>(stackalloc (int, int)[Math.Min(this.Length, 128)]);
+            Split(ref splits, separators, count, options);
+
+            return ConsolidateSplitArray(ref splits);
+        }
+
+        /// <inheritdoc cref="Split(char, int?, StringSplitOptions)"/>
+        public Substring[] Split(string separator, int? count = null, StringSplitOptions options = StringSplitOptions.None)
+        {
+            var splits = new StackList<(int Offset, int Count)>(stackalloc (int, int)[Math.Min(this.Length, 128)]);
+            Split(ref splits, separator, count, options);
+
+            return ConsolidateSplitArray(ref splits);
+        }
+
+        /// <inheritdoc cref="Split(char, int?, StringSplitOptions)"/>
+        public Substring[] Split(ReadOnlySpan<string> separators, int? count = null, StringSplitOptions options = StringSplitOptions.None)
+        {
+            var splits = new StackList<(int Offset, int Count)>(stackalloc (int, int)[Math.Min(this.Length, 128)]);
+            Split(ref splits, separators, count, options);
+
+            return ConsolidateSplitArray(ref splits);
+        }
+
+        /// <inheritdoc cref="Split_DocumentationStub"/>
         /// <param name="output">
-        /// The output buffer to receive the results.
+        /// Output list to receive substrings from this instance that are delimited by the specified separator(s).
+        /// If <paramref name="count"/> is specified, the list will receive this number of elements at most.
         /// </param>
-        /// <exception cref="ArgumentNullException"/>
-        /// <inheritdoc cref="SplitInternal(Substring, string, List{Substring}, bool, StringSplitOptions)"/>
-        public void Split(string separator, List<Substring> output, StringSplitOptions options = StringSplitOptions.None)
+        public void Split(List<Substring> output, char separator, int? count = null, StringSplitOptions options = StringSplitOptions.None)
         {
             _ = output ?? throw new ArgumentNullException(nameof(output));
 
-            SplitInternal(this, separator, output, false, options);
+            var splits = new StackList<(int Offset, int Count)>(stackalloc (int, int)[Math.Min(this.Length, 128)]);
+            Split(ref splits, separator, count, options);
+
+            ConsolidateSplitList(ref splits, output);
         }
 
-        // TODO: Move overloads for split, including single char, char array, string array.
+        /// <inheritdoc cref="Split(List{Substring}, char, int?, StringSplitOptions)"/>
+        public void Split(List<Substring> output, ReadOnlySpan<char> separators, int? count = null, StringSplitOptions options = StringSplitOptions.None)
+        {
+            _ = output ?? throw new ArgumentNullException(nameof(output));
+
+            var splits = new StackList<(int Offset, int Count)>(stackalloc (int, int)[Math.Min(this.Length, 128)]);
+            Split(ref splits, separators, count, options);
+
+            ConsolidateSplitList(ref splits, output);
+        }
+
+        /// <inheritdoc cref="Split(List{Substring}, char, int?, StringSplitOptions)"/>
+        public void Split(List<Substring> output, string separator, int? count = null, StringSplitOptions options = StringSplitOptions.None)
+        {
+            _ = output ?? throw new ArgumentNullException(nameof(output));
+
+            var splits = new StackList<(int Offset, int Count)>(stackalloc (int, int)[Math.Min(this.Length, 128)]);
+            Split(ref splits, separator, count, options);
+
+            ConsolidateSplitList(ref splits, output);
+        }
+
+        /// <inheritdoc cref="Split(List{Substring}, char, int?, StringSplitOptions)"/>
+        public void Split(List<Substring> output, ReadOnlySpan<string> separators, int? count = null, StringSplitOptions options = StringSplitOptions.None)
+        {
+            _ = output ?? throw new ArgumentNullException(nameof(output));
+
+            var splits = new StackList<(int Offset, int Count)>(stackalloc (int, int)[Math.Min(this.Length, 128)]);
+            Split(ref splits, separators, count, options);
+
+            ConsolidateSplitList(ref splits, output);
+        }
 
         private static unsafe Substring TrimWhiteSpaceHelper(in Substring s, bool head, bool tail)
         {

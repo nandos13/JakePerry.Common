@@ -79,13 +79,13 @@ namespace JakePerry.Reflection
         }
 
         /// <summary>
-        /// An array of rental buffers, where each buffer in the array contains
+        /// An array of pools, where each pool in the array contains
         /// instances of <see cref="object"/>[] with a length equal to one more than
         /// the index of the buffer in the array.
         /// <para/>
-        /// ie. <c>Print(_rentalArrays[3].Pop().Length)</c> prints 4.
+        /// ie. <c>Print(_arrayPools[3].Rent().Length)</c> prints 4.
         /// </summary>
-        private static readonly Stack<object[]>[] _rentalArrays;
+        private static readonly ObjectPool<object[]>[] _arrayPools;
 
         private static readonly Dictionary<TypeKey, Type> _typeLookup = new();
         private static readonly Dictionary<FieldPropertyKey, FieldInfo> _fieldLookup = new();
@@ -97,10 +97,16 @@ namespace JakePerry.Reflection
 
         static ReflectionEx()
         {
-            _rentalArrays = new Stack<object[]>[4];
+            static void Teardown(object[] o) => Array.Clear(o, 0, o.Length);
+
+            _arrayPools = new ObjectPool<object[]>[4];
             for (int i = 0; i < 4; ++i)
             {
-                _rentalArrays[i] = new Stack<object[]>(capacity: 8);
+                int length = i + 1;
+                _arrayPools[i] = new ObjectPool<object[]>(() => new object[length], Teardown)
+                {
+                    Capacity = 4
+                };
             }
         }
 
@@ -601,67 +607,83 @@ namespace JakePerry.Reflection
         }
 
         /// <summary>
-        /// Rent an array with the given length in range [1..4].
+        /// Get a pool containing arrays of the specified length in range [1..4].
         /// </summary>
-        /// <remarks>
-        /// Intended for use as an arguments array in a reflection call.
-        /// </remarks>
         /// <exception cref="ArgumentOutOfRangeException"/>
-        public static object[] RentArray(int length)
+        public static ObjectPool<object[]> GetArrayPool(int length)
         {
             if (length < 1 || length > 4) throw new ArgumentOutOfRangeException(nameof(length));
 
-            var stack = _rentalArrays[length - 1];
-            var array = stack.Count > 0 ? stack.Pop() : new object[length];
-
-            return array;
+            return _arrayPools[length - 1];
         }
 
         /// <summary>
-        /// Rent an array containing the given argument(s).
+        /// Rent an array with the given length in range [1..4].
+        /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException"/>
+        public static object[] RentArray(int length)
+        {
+            var pool = GetArrayPool(length);
+            return pool.Rent();
+        }
+
+        /// <summary>
+        /// Rent an array with the given length in range [1..4] and obtain a scope
+        /// object that will handle returning said array when it is disposed.
         /// </summary>
         /// <remarks>
-        /// Intended for use as an arguments array in a reflection call.
+        /// See <see cref="ObjectPool{T}.RentInScope(out T)"/> for usage guidelines.
         /// </remarks>
-        public static object[] RentArrayWithArguments(object arg0)
+        public static ObjectPool<object[]>.RentalScope RentArrayInScope(int length, out object[] obj)
         {
-            var array = RentArray(1);
-            array[0] = arg0;
-
-            return array;
+            var pool = GetArrayPool(length);
+            return pool.RentInScope(out obj);
         }
 
-        /// <inheritdoc cref="RentArrayWithArguments(object)"/>
-        public static object[] RentArrayWithArguments(object arg0, object arg1)
+        /// <summary>
+        /// Rent an array contaning the given argument(s) and obtain a scope
+        /// object that will handle returning said array when it is disposed.
+        /// </summary>
+        /// <inheritdoc cref="RentArrayInScope(int, out object[])"/>
+        public static ObjectPool<object[]>.RentalScope RentArrayWithArgsInScope(out object[] obj, object arg0)
         {
-            var array = RentArray(2);
-            array[0] = arg0;
-            array[1] = arg1;
+            var scope = RentArrayInScope(1, out obj);
+            obj[0] = arg0;
 
-            return array;
+            return scope;
         }
 
-        /// <inheritdoc cref="RentArrayWithArguments(object)"/>
-        public static object[] RentArrayWithArguments(object arg0, object arg1, object arg2)
+        /// <inheritdoc cref="RentArrayWithArgsInScope(out object[], object)"/>
+        public static ObjectPool<object[]>.RentalScope RentArrayWithArgsInScope(out object[] obj, object arg0, object arg1)
         {
-            var array = RentArray(3);
-            array[0] = arg0;
-            array[1] = arg1;
-            array[2] = arg2;
+            var scope = RentArrayInScope(2, out obj);
+            obj[0] = arg0;
+            obj[1] = arg1;
 
-            return array;
+            return scope;
         }
 
-        /// <inheritdoc cref="RentArrayWithArguments(object)"/>
-        public static object[] RentArrayWithArguments(object arg0, object arg1, object arg2, object arg3)
+        /// <inheritdoc cref="RentArrayWithArgsInScope(out object[], object)"/>
+        public static ObjectPool<object[]>.RentalScope RentArrayWithArgsInScope(out object[] obj, object arg0, object arg1, object arg2)
         {
-            var array = RentArray(4);
-            array[0] = arg0;
-            array[1] = arg1;
-            array[2] = arg2;
-            array[3] = arg3;
+            var scope = RentArrayInScope(3, out obj);
+            obj[0] = arg0;
+            obj[1] = arg1;
+            obj[2] = arg2;
 
-            return array;
+            return scope;
+        }
+
+        /// <inheritdoc cref="RentArrayWithArgsInScope(out object[], object)"/>
+        public static ObjectPool<object[]>.RentalScope RentArrayWithArgsInScope(out object[] obj, object arg0, object arg1, object arg2, object arg3)
+        {
+            var scope = RentArrayInScope(3, out obj);
+            obj[0] = arg0;
+            obj[1] = arg1;
+            obj[2] = arg2;
+            obj[3] = arg3;
+
+            return scope;
         }
 
         /// <summary>
@@ -671,11 +693,8 @@ namespace JakePerry.Reflection
         {
             if (array is null) return;
 
-            int length = array.Length;
-            if (length < 1 || length > 4) return;
-
-            Array.Clear(array, 0, length);
-            _rentalArrays[length - 1].Push(array);
+            var pool = GetArrayPool(array.Length);
+            pool.Return(array);
         }
     }
 }

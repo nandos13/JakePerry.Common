@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1</TargetFrameworks>
-    <LangVersion>9.0</LangVersion>
+    <LangVersion>11.0</LangVersion>
     <RootNamespace>JakePerry</RootNamespace>
     <Authors>Jake Perry</Authors>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>

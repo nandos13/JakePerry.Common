@@ -17,6 +17,11 @@ namespace JakePerry
         private readonly int m_length;
 
         /// <summary>
+        /// Indicates whether the substring is empty.
+        /// </summary>
+        public bool IsEmpty => m_length == 0;
+
+        /// <summary>
         /// The length of this substring.
         /// </summary>
         public int Length => m_length;
@@ -71,6 +76,24 @@ namespace JakePerry
 
         public Substring(string value) : this(value, 0) { }
 
+        public Substring(string value, Index startIndex)
+        {
+            _ = value ?? throw new ArgumentNullException(nameof(value));
+
+            int start = startIndex.GetOffset(value.Length);
+
+            this = new Substring(value, start);
+        }
+
+        public Substring(string value, Range range)
+        {
+            _ = value ?? throw new ArgumentNullException(nameof(value));
+
+            (int start, int length) = range.GetOffsetAndLength(value.Length);
+
+            this = new Substring(value, start, length);
+        }
+
         public Substring(Substring other, int startIndex, int length)
         {
             int len = other.m_length;
@@ -109,6 +132,20 @@ namespace JakePerry
             this = new Substring(other.m_value, startIndex, length);
         }
 
+        public Substring(Substring other, Index startIndex)
+        {
+            int start = startIndex.GetOffset(other.Length);
+
+            this = new Substring(other, start);
+        }
+
+        public Substring(Substring other, Range range)
+        {
+            (int start, int length) = range.GetOffsetAndLength(other.Length);
+
+            this = new Substring(other, start, length);
+        }
+
         /// <returns>
         /// The character at the given index in the substring.
         /// </returns>
@@ -126,6 +163,16 @@ namespace JakePerry
             }
         }
 
+        public Substring Slice(int start)
+        {
+            return new Substring(this, start);
+        }
+
+        public Substring Slice(int start, int length)
+        {
+            return new Substring(this, start, length);
+        }
+
         /// <summary>
         /// Creates a new read-only span over a string.
         /// </summary>
@@ -140,7 +187,7 @@ namespace JakePerry
         /// </param>
         public ReadOnlySpan<char> AsSpan(int start)
         {
-            return new Substring(this, start).AsSpan();
+            return Slice(start).AsSpan();
         }
 
         /// <inheritdoc cref="AsSpan(int)"/>
@@ -149,7 +196,7 @@ namespace JakePerry
         /// </param>
         public ReadOnlySpan<char> AsSpan(int start, int length)
         {
-            return new Substring(this, start, length).AsSpan();
+            return Slice(start, length).AsSpan();
         }
 
         /// <summary>
@@ -166,7 +213,7 @@ namespace JakePerry
         /// </param>
         public ReadOnlyMemory<char> AsMemory(int start)
         {
-            return new Substring(this, start).AsMemory();
+            return Slice(start).AsMemory();
         }
 
         /// <inheritdoc cref="AsMemory(int)"/>
@@ -175,7 +222,7 @@ namespace JakePerry
         /// </param>
         public ReadOnlyMemory<char> AsMemory(int start, int length)
         {
-            return new Substring(this, start, length).AsMemory();
+            return Slice(start, length).AsMemory();
         }
 
         /// <summary>
