@@ -4,12 +4,10 @@ using System.Runtime.CompilerServices;
 
 namespace JakePerry.Collections
 {
-    // TODO: Unit tests for this one
-
     internal ref struct StackList<T>
     {
         private Span<T> m_span;
-        T[] m_fromPool;
+        private T[] m_fromPool;
         private int m_pos;
 
         public int Count => m_pos;

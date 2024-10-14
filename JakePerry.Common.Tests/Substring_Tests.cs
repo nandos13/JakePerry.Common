@@ -8,6 +8,14 @@
     [TestClass]
     public class Substring_Tests
     {
+        // Input strings for 'Split' method tests
+        private static IEnumerable<object[]> StringSplitInputData
+            => new[] { new object[] { "", " ", ",", " ,", ", ", "a", "a,b", ",a,b", "a,b,", "a,,b", "a b", " a, b " } };
+
+        // Separator strings/char spans for 'Split' method tests
+        private static IEnumerable<object[]> StringSplitSeparatorCharStrings
+            => new[] { new object[] { ",", "a", "b", ",a", ",b", "ab", " ,", " a" } };
+
         [TestMethod]
         public void Cast_FromNullString_Throws()
         {
@@ -185,6 +193,98 @@
             Func<object?> action = () => substring[accessIndex];
 
             Assert.ThrowsException<ArgumentOutOfRangeException>(action);
+        }
+
+        [TestMethod]
+        [ParameterCombinationData]
+        public void Split_Whitespace_MatchesStringImpl(
+            [ParameterDynamicValues(nameof(StringSplitInputData))]
+            string str,
+            [ParameterValues(null, 1, 2, 3)]
+            int? count,
+            [ParameterValues(StringSplitOptions.None, StringSplitOptions.RemoveEmptyEntries)]
+            StringSplitOptions options)
+        {
+            var separators = Array.Empty<char>();
+
+            var splits1 = new Substring(str).Split(separators, count, options);
+            var splits2 = count.HasValue ? str.Split(separators, count.Value, options) : str.Split(separators, options);
+
+            Assert.That.SequenceEqual(expected: splits2, actual: splits1.Select(s => s.ToString()));
+        }
+
+        [TestMethod]
+        [ParameterCombinationData]
+        public void Split_CharSeparator_MatchesStringImpl(
+            [ParameterValues(',')]
+            char separator,
+            [ParameterDynamicValues(nameof(StringSplitInputData))]
+            string str,
+            [ParameterValues(null, 1, 2, 3)]
+            int? count,
+            [ParameterValues(StringSplitOptions.None, StringSplitOptions.RemoveEmptyEntries)]
+            StringSplitOptions options)
+        {
+            var splits1 = new Substring(str).Split(separator, count, options);
+            var splits2 = count.HasValue ? str.Split(separator, count.Value, options) : str.Split(separator, options);
+
+            Assert.That.SequenceEqual(expected: splits2, actual: splits1.Select(s => s.ToString()));
+        }
+
+        [TestMethod]
+        [ParameterCombinationData]
+        public void Split_CharSpanSeparator_MatchesStringImpl(
+            [ParameterDynamicValues(nameof(StringSplitSeparatorCharStrings))]
+            string separatorChars,
+            [ParameterDynamicValues(nameof(StringSplitInputData))]
+            string str,
+            [ParameterValues(null, 1, 2, 3)]
+            int? count,
+            [ParameterValues(StringSplitOptions.None, StringSplitOptions.RemoveEmptyEntries)]
+            StringSplitOptions options)
+        {
+            var separators = separatorChars.ToCharArray();
+
+            var splits1 = new Substring(str).Split(separators.AsSpan(), count, options);
+            var splits2 = count.HasValue ? str.Split(separators, count.Value, options) : str.Split(separators, options);
+
+            Assert.That.SequenceEqual(expected: splits2, actual: splits1.Select(s => s.ToString()));
+        }
+
+        [TestMethod]
+        [ParameterCombinationData]
+        public void Split_StringSeparator_MatchesStringImpl(
+            [ParameterDynamicValues(nameof(StringSplitSeparatorCharStrings))]
+            string separator,
+            [ParameterDynamicValues(nameof(StringSplitInputData))]
+            string str,
+            [ParameterValues(null, 1, 2, 3)]
+            int? count,
+            [ParameterValues(StringSplitOptions.None, StringSplitOptions.RemoveEmptyEntries)]
+            StringSplitOptions options)
+        {
+            var splits1 = new Substring(str).Split(separator, count, options);
+            var splits2 = count.HasValue ? str.Split(separator, count.Value, options) : str.Split(separator, options);
+
+            Assert.That.SequenceEqual(expected: splits2, actual: splits1.Select(s => s.ToString()));
+        }
+
+        [TestMethod]
+        [ParameterCombinationData]
+        public void Split_StringSpanSeparators_MatchesStringImpl(
+            [ParameterValues(new[] { "," }, new[] { ",", "a" }, new[] { "a", "b" })]
+            string[] separators,
+            [ParameterDynamicValues(nameof(StringSplitInputData))]
+            string str,
+            [ParameterValues(null, 1, 2, 3)]
+            int? count,
+            [ParameterValues(StringSplitOptions.None, StringSplitOptions.RemoveEmptyEntries)]
+            StringSplitOptions options)
+        {
+            var splits1 = new Substring(str).Split(separators, count, options);
+            var splits2 = count.HasValue ? str.Split(separators, count.Value, options) : str.Split(separators, options);
+
+            Assert.That.SequenceEqual(expected: splits2, actual: splits1.Select(s => s.ToString()));
         }
     }
 }
