@@ -4,6 +4,11 @@ using System.Runtime.CompilerServices;
 
 namespace JakePerry.Text.Json
 {
+    /// <summary>
+    /// Representation of a token found in some json data.
+    /// Contains the <see cref="TokenType"/> as well as the start index and count
+    /// of the token in the source string.
+    /// </summary>
     internal struct JToken
     {
         private byte m_type;
@@ -23,7 +28,11 @@ namespace JakePerry.Text.Json
         /// <summary>
         /// Indicates whether the token is undefined or if the end of file was reached.
         /// </summary>
-        internal bool IsEnd => type == TokenType.Undefined || type == TokenType.EndOfFile;
+        internal bool IsEnd
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => type == TokenType.Undefined || type == TokenType.EndOfFile;
+        }
 
         internal JToken(TokenType type, int start, int count)
         {
@@ -35,6 +44,7 @@ namespace JakePerry.Text.Json
         /// <summary>
         /// Obtain the corresponding slice of the <paramref name="source"/> span.
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal ReadOnlySpan<char> Slice(ReadOnlySpan<char> source)
         {
             return source.Slice(start, count);

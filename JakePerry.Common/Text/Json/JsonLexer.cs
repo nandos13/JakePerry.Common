@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace JakePerry.Text.Json
@@ -9,21 +11,10 @@ namespace JakePerry.Text.Json
         private const string kLiteralTrue = "true";
         private const string kLiteralNull = "null";
 
-        // Copy of char.IsBetween
+        // Copy of char.IsBetween - unavailable
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsBetween(char c, char minInclusive, char maxInclusive) =>
             (uint)(c - minInclusive) <= (uint)(maxInclusive - minInclusive);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsEscaped(scoped ReadOnlySpan<char> s, int i)
-        {
-            int escaperCount = 0;
-            for (; i > 0 && s[i - 1] == '\\'; --i)
-            {
-                ++escaperCount;
-            }
-            return escaperCount % 2 == 1;
-        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void SkipWhitespace(scoped ReadOnlySpan<char> s, ref int i)
@@ -192,13 +183,27 @@ namespace JakePerry.Text.Json
             }
         }
 
-        private static JToken NextToken(scoped ReadOnlySpan<char> s, ref int i)
+        /// <summary>
+        /// Read the next token, starting from index <paramref name="i"/>.
+        /// Any preceding whitespace will be ignored.
+        /// </summary>
+        /// <param name="s">
+        /// Input span of json data.
+        /// </param>
+        /// <param name="i">
+        /// Index at which to read. This method advances the value to the next read position.
+        /// </param>
+        /// <returns>
+        /// A <see cref="JToken"/> representation of the next token that is found
+        /// in the data span <paramref name="s"/>.
+        /// </returns>
+        internal static JToken NextToken(scoped ReadOnlySpan<char> s, ref int i)
         {
             SkipWhitespace(s, ref i);
 
             if (i == s.Length)
             {
-                return new JToken(TokenType.EndOfFile, i, 0);
+                return new JToken(TokenType.EndOfFile, i++, 0);
             }
 
             switch (s[i])
@@ -238,11 +243,52 @@ namespace JakePerry.Text.Json
             }
         }
 
+        // TODO: Documentation. Mention how its used with the heap enumerator
+        // to work around ref struct limitations.
+        // TODO: Possible to make some of this reusable, ie. pagination tokens?
+        //       Cursor<T>
+        internal readonly struct Cursor
+        {
+            private readonly int m_index;
+            private readonly bool m_end;
+
+            internal int Index => m_index;
+
+            internal bool IsEnd => m_end;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private Cursor(int index, bool end)
+            {
+                m_index = index;
+                m_end = end;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            internal Cursor(int index) : this(index, false) { }
+
+            internal static Cursor Start
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => new(0);
+            }
+
+            internal static Cursor End
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => new(-1, true);
+            }
+        }
+
+        /// <summary>
+        /// A stack-only struct that can be used to read json tokens using the
+        /// <see cref="NextToken(ReadOnlySpan{char}, ref int)"/> method.
+        /// </summary>
         internal ref struct Enumerator
         {
             private readonly ReadOnlySpan<char> m_span;
             private int m_index;
             private JToken m_token;
+            private bool m_moved;
 
             public readonly JToken Current
             {
@@ -250,40 +296,270 @@ namespace JakePerry.Text.Json
                 get => m_token;
             }
 
+            /// <summary>
+            /// Get a <see cref="JsonLexer.Cursor"/> representing the enumerator's current read position.
+            /// </summary>
+            internal readonly Cursor Cursor
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => m_index > 0 && m_token.IsEnd ? Cursor.End : new(m_index);
+            }
+
+            internal ReadOnlySpan<char> Span
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => m_span;
+            }
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal Enumerator(ReadOnlySpan<char> span)
             {
                 m_span = span;
-                m_index = -1;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            internal Enumerator(ReadOnlySpan<char> span, Cursor cursor)
+            {
+                m_span = span;
+                m_index = cursor.Index;
+                m_token = default;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
-                if (m_index > 0 && m_token.IsEnd)
+                if (m_moved && m_token.IsEnd)
                 {
                     return false;
                 }
 
                 m_token = NextToken(m_span, ref m_index);
+                m_moved = true;
                 return true;
+            }
+
+            /// <summary>
+            /// Reads all tokens from the json data in <paramref name="span"/> into
+            /// the <paramref name="output"/> list.
+            /// </summary>
+            /// <param name="span">
+            /// Input span of json data.
+            /// </param>
+            /// <param name="output">
+            /// The output token list.
+            /// </param>
+            /// <returns>
+            /// Returns the <paramref name="output"/> list for fluent method chaining.
+            /// </returns>
+            /// <exception cref="ArgumentNullException"/>
+            internal static List<JToken> Read(in ReadOnlySpan<char> span, List<JToken> output)
+            {
+                _ = output ?? throw new ArgumentNullException(nameof(output));
+
+                var enumerator = new Enumerator(span);
+                while (enumerator.MoveNext())
+                {
+                    output.Add(enumerator.Current);
+                }
+
+                return output;
+            }
+
+            /// <summary>
+            /// Reads a number of tokens from the json data in <paramref name="span"/> into
+            /// the <paramref name="output"/> buffer.
+            /// </summary>
+            /// <param name="span">
+            /// Input span of json data.
+            /// </param>
+            /// <param name="cursor">
+            /// The cursor to a location in the <paramref name="span"/>.
+            /// </param>
+            /// <param name="offset">
+            /// An offset at which to write into the <paramref name="output"/> buffer.
+            /// </param>
+            /// <param name="count">
+            /// The number of tokens to be read.
+            /// </param>
+            /// <param name="output">
+            /// The output token buffer.
+            /// </param>
+            /// <returns>
+            /// Returns the number of tokens that were read into the <paramref name="output"/> buffer.
+            /// </returns>
+            /// <exception cref="ArgumentNullException"/>
+            internal static int Read(in ReadOnlySpan<char> span, ref Cursor cursor, int offset, int count, JToken[] output)
+            {
+                _ = output ?? throw new ArgumentNullException(nameof(output));
+
+                if (cursor.IsEnd) throw new ArgumentException("Cursor reached end.", nameof(cursor));
+
+                if (offset < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(offset), offset, SR.ArgumentOutOfRange_NeedNonNegNum);
+                }
+                if (count <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(count), count, SR.ArgumentOutOfRange_MustBePositive);
+                }
+                if (offset + count > output.Length)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(count), count, SR.@Argument_InvalidOffLen);
+                }
+
+                int i = 0;
+
+                var enumerator = new Enumerator(span, cursor);
+                while (enumerator.MoveNext())
+                {
+                    output[i + offset] = enumerator.Current;
+                    cursor = enumerator.Cursor;
+
+                    if (++i == count) break;
+                }
+
+                return i;
             }
         }
 
-        internal readonly ref struct Tokenizer
+        /// <summary>
+        /// A stack-only struct that can be used to read json tokens.
+        /// </summary>
+        /// <seealso cref="Enumerator"/>
+        internal readonly ref struct Enumerable
         {
             private readonly ReadOnlySpan<char> m_span;
 
+            internal ReadOnlySpan<char> Span
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => m_span;
+            }
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal Tokenizer(ReadOnlySpan<char> span)
+            internal Enumerable(ReadOnlySpan<char> span)
             {
                 m_span = span;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public Enumerator GetEnumerator() => new(m_span);
+
+            /// <inheritdoc cref="Enumerator.Read(in ReadOnlySpan{char}, List{JToken})"/>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            internal List<JToken> Read(List<JToken> output)
+            {
+                return Enumerator.Read(m_span, output);
+            }
+
+            /// <inheritdoc cref="Enumerator.Read(in ReadOnlySpan{char}, ref Cursor, int, int, JToken[])"/>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            internal int Read(ref Cursor cursor, int count, JToken[] output, int offset = 0)
+            {
+                return Enumerator.Read(m_span, ref cursor, offset, count, output);
+            }
         }
 
-        internal static Tokenizer Tokenize(ReadOnlySpan<char> span) => new(span);
+        /// <summary>
+        /// A reference-type enumerable implementation that can be used to read json tokens.
+        /// <para/>
+        /// This type fully implements the <see cref="IEnumerable{T}"/> interface, allowing it to be
+        /// used with LINQ methods, etc.
+        /// </summary>
+        internal sealed class HeapEnumerable : IEnumerable<JToken>
+        {
+            private struct HeapEnumerator : IEnumerator<JToken>
+            {
+                private readonly ReadOnlyMemory<char> m_memory;
+                private Cursor m_cursor;
+                private JToken m_token;
+
+                public JToken Current
+                {
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    get => m_token;
+                }
+
+                object IEnumerator.Current => this.Current;
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                internal HeapEnumerator(ReadOnlyMemory<char> memory)
+                {
+                    m_memory = memory;
+                    m_cursor = Cursor.Start;
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public bool MoveNext()
+                {
+                    if (m_cursor.IsEnd) return false;
+
+                    var enumerator = new Enumerator(m_memory.Span, m_cursor);
+
+                    bool moved = enumerator.MoveNext();
+                    m_cursor = enumerator.Cursor;
+                    m_token = enumerator.Current;
+
+                    return moved;
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public void Reset() => m_cursor = Cursor.Start;
+
+                void IDisposable.Dispose() { }
+            }
+
+            private readonly ReadOnlyMemory<char> m_memory;
+
+            internal HeapEnumerable(ReadOnlyMemory<char> memory)
+            {
+                m_memory = memory;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            internal Enumerator GetEnumerator() => new(m_memory.Span);
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private HeapEnumerator GetHeapEnumerator() => new(m_memory);
+
+            IEnumerator IEnumerable.GetEnumerator() => this.GetHeapEnumerator();
+            IEnumerator<JToken> IEnumerable<JToken>.GetEnumerator() => this.GetHeapEnumerator();
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            internal Enumerable ToStackEnumerable() => new(m_memory.Span);
+        }
+
+        /// <summary>
+        /// Enumerates all tokens in the json data <paramref name="span"/>.
+        /// <para/>
+        /// This method returns the stack-only ref struct <see cref="Enumerable"/>
+        /// and can be used to iterate the tokens in place, such as directly in a <see langword="foreach"/> loop.
+        /// If an implementation of <see cref="IEnumerable{T}"/> is required (ie. for use with LINQ, or to pass
+        /// elsewhere for later use), use the <see cref="TokenizeHeapMemory(ReadOnlyMemory{char})"/> method.
+        /// </summary>
+        /// <param name="span">
+        /// Input span of json data.
+        /// </param>
+        internal static Enumerable TokenizeSpan(ReadOnlySpan<char> span) => new(span);
+
+        /// <summary>
+        /// Enumerates all tokens in the json data stored in <paramref name="memory"/>.
+        /// <para/>
+        /// This method returns a <see cref="HeapEnumerable"/> object, which implements the <see cref="IEnumerable{T}"/>
+        /// interface. If this is not required, the <see cref="TokenizeSpan(ReadOnlySpan{char})"/>
+        /// method can be used to iterate json tokens entirely on the stack, avoiding additional overhead.
+        /// </summary>
+        /// <param name="memory">
+        /// Input span of json data.
+        /// </param>
+        internal static HeapEnumerable TokenizeHeapMemory(ReadOnlyMemory<char> memory) => new(memory);
+
+        /// <inheritdoc cref="TokenizeHeapMemory(ReadOnlyMemory{char})"/>
+        internal static HeapEnumerable TokenizeHeapMemory(string buffer)
+        {
+            _ = buffer ?? throw new ArgumentNullException(nameof(buffer));
+
+            return new(buffer.AsMemory());
+        }
     }
 }

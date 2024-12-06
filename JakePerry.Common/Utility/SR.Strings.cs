@@ -8,6 +8,8 @@
             internal const string @Arg_WrongType = "Arg_WrongType";
             internal const string @Argument_AddingDuplicate = "Argument_AddingDuplicate";
             internal const string @Argument_InvalidOffLen = "Argument_InvalidOffLen";
+            internal const string @ArgumentOutOfRange_Count = "ArgumentOutOfRange_Count";
+            internal const string @ArgumentOutOfRange_MustBePositive = "ArgumentOutOfRange_MustBePositive";
             internal const string @ArgumentOutOfRange_NeedNonNegNum = "ArgumentOutOfRange_NeedNonNegNum";
             internal const string @Exception_EndStackTraceFromPreviousThrow = "Exception_EndStackTraceFromPreviousThrow";
             internal const string @NotSupported_KeyCollectionSet = "NotSupported_KeyCollectionSet";
@@ -24,6 +26,12 @@
 
         /// <summary>Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.</summary>
         internal static string @Argument_InvalidOffLen => GetResourceString(Strings.@Argument_InvalidOffLen);
+
+        /// <summary>Count must be positive and count must refer to a location within the string/array/collection.</summary>
+        internal static string @ArgumentOutOfRange_Count => GetResourceString(Strings.@ArgumentOutOfRange_Count);
+
+        /// <summary>'{0}' must be greater than zero.</summary>
+        internal static string @ArgumentOutOfRange_MustBePositive => GetResourceString(Strings.@ArgumentOutOfRange_MustBePositive);
 
         /// <summary>Non-negative number required.</summary>
         internal static string @ArgumentOutOfRange_NeedNonNegNum => GetResourceString(Strings.@ArgumentOutOfRange_NeedNonNegNum);
