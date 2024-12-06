@@ -5,7 +5,7 @@ namespace JakePerry.Tests
     [TestClass]
     public class SR_Tests
     {
-        private static IEnumerable<object[]> ReflectionMembers
+        private static IDynamicTestData ReflectionMembers
         {
             get
             {
@@ -22,7 +22,7 @@ namespace JakePerry.Tests
             }
         }
 
-        private static IEnumerable<object[]> ExceptionResources
+        private static IDynamicTestData ExceptionResources
         {
             get
             {

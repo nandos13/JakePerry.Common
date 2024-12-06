@@ -5,7 +5,7 @@ namespace JakePerry.Text.Json.Tests
     [TestClass]
     public partial class JsonLexer_Tests
     {
-        private static IEnumerable<object[]> EnumerateValidJsonInputAndExpectedResults()
+        private static IDynamicTestData EnumerateValidJsonInputAndExpectedResults()
         {
             var inputs = Json_TestData.ValidJsonInputs;
             var tokens = Json_TestData.ValidJsonInputTokens;
@@ -16,7 +16,7 @@ namespace JakePerry.Text.Json.Tests
             }
         }
 
-        private static IEnumerable<object[]> JsonAndExpectedTokenPairs => EnumerateValidJsonInputAndExpectedResults();
+        private static IDynamicTestData JsonAndExpectedTokenPairs => EnumerateValidJsonInputAndExpectedResults();
 
         [ClassInitialize]
         [SuppressMessage("Style", "IDE0060:Remove unused parameter",

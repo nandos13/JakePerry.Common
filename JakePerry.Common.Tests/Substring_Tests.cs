@@ -9,11 +9,11 @@
     public class Substring_Tests
     {
         // Input strings for 'Split' method tests
-        private static IEnumerable<object[]> StringSplitInputData
+        private static IDynamicTestData StringSplitInputData
             => new[] { new object[] { "", " ", ",", " ,", ", ", "a", "a,b", ",a,b", "a,b,", "a,,b", "a b", " a, b " } };
 
         // Separator strings/char spans for 'Split' method tests
-        private static IEnumerable<object[]> StringSplitSeparatorCharStrings
+        private static IDynamicTestData StringSplitSeparatorCharStrings
             => new[] { new object[] { ",", "a", "b", ",a", ",b", "ab", " ,", " a" } };
 
         [TestMethod]
