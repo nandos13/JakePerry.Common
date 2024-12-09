@@ -36,16 +36,25 @@ namespace JakePerry.Text.Json
             bool escaping = false;
             for (; i < s.Length; ++i)
             {
+                // Escaper
                 if (s[i] == '\\')
                 {
                     escaping = !escaping;
+
+                    // TODO: Determine if this belongs here or should only be checked during parsing.
+                    // Unicode hex ie. '\u01CF'
+                    //if (escaping && )
+                    //    ;
+
                     continue;
                 }
+                // Newline
                 else if (s[i] == '\n')
                 {
-                    ++i;
-                    return new JToken(TokenType.Undefined, start, i - start);
+                    i = start;
+                    return JToken.Undefined(i++);
                 }
+                // Unescaped end quotation
                 else if (s[i] == '\"' && !escaping)
                 {
                     int end = i++;
@@ -80,21 +89,35 @@ namespace JakePerry.Text.Json
             // Number values
             if (s[i] == '-' || IsBetween(s[i], '0', '9'))
             {
+                bool anyDigit = s[i] != '-';
+                bool anyNonZeroDigit = anyDigit && s[i] != '0';
+
                 int next = i + 1;
-                bool hasDecimal = false;
-                bool hasExponent = false;
+                int fractionIndex = -1;
+                int exponentIndex = -1;
                 for (; next < s.Length; ++next)
                 {
                     if (s[next] == 'e' || s[next] == 'E')
                     {
-                        // If we already found exponential notation, the char is illegal.
-                        if (hasExponent)
+                        // More than one exponent is invalid.
+                        // '1e5' - valid
+                        // '1e5e6' - invalid
+                        if (exponentIndex > -1)
                         {
-                            i = next + 1;
-                            return new JToken(TokenType.Undefined, next, 1);
+                            return JToken.Undefined(i++);
                         }
 
-                        hasExponent = true;
+                        // Exponents without leading digits are invalid. Digit(s) do not have to be non-zero.
+                        // '0e5' - valid
+                        // '1e5' - valid
+                        // 'e5' - invalid
+                        // '-e5' - invalid
+                        if (!anyDigit)
+                        {
+                            return JToken.Undefined(i++);
+                        }
+
+                        exponentIndex = i;
 
                         // Exponent allows optional positive (+) and negative (-) signs.
                         // Checking here means we don't have to introduce a branch in every loop iteration.
@@ -109,28 +132,68 @@ namespace JakePerry.Text.Json
 
                     if (s[next] == '.')
                     {
-                        // If we already found a decimal or exponent preceeded it, the period char is illegal.
-                        if (hasDecimal || hasExponent)
+                        // More than one fraction part is invalid.
+                        // Fraction after exponent is invalid.
+                        // '1.1.1' - invalid
+                        // '1e5.1' - invalid
+                        if (fractionIndex > -1 || exponentIndex > -1)
                         {
-                            i = next + 1;
-                            return new JToken(TokenType.Undefined, next, 1);
+                            return JToken.Undefined(i++);
                         }
 
-                        hasDecimal = true;
+                        // Fractions without leading digits are invalid. Digit(s) do not have to be non-zero.
+                        // '.01' - invalid
+                        if (!anyDigit)
+                        {
+                            // TODO: Consider supporting some enum of 'lexer failure reasons' on jtoken? (only when its undefined)
+                            return JToken.Undefined(i++);
+                        }
+
+                        fractionIndex = next;
                         continue;
                     }
 
-                    if (!IsBetween(s[next], '0', '9'))
+                    if (IsBetween(s[next], '0', '9'))
+                    {
+                        anyDigit = true;
+                        anyNonZeroDigit |= s[next] != 0;
+                    }
+                    else
                     {
                         break;
                     }
                 }
 
                 // Numbers must end with a digit char.
+                // '1.0' - valid
+                // '1.' - invalid
+                // '1e+5 - valid
+                // '1e+' - invalid
+                // '-' - invalid
                 if (!IsBetween(s[next - 1], '0', '9'))
                 {
-                    i = next + 1;
-                    return new JToken(TokenType.Undefined, next, 0);
+                    return JToken.Undefined(i++);
+                }
+
+                // Leading zeros are not valid.
+                // '0' - valid
+                // '0.0' - valid
+                // '0.01' - valid
+                // '00' - invalid
+                // '01' - invalid
+                int firstDigitIndex = s[i] == '-' ? i + 1 : i;
+                if (s[firstDigitIndex] == 0)
+                {
+                    int secondDigitIndex = firstDigitIndex + 1;
+                    bool zeroDigitIsValid =
+                        secondDigitIndex == next ||
+                        secondDigitIndex == exponentIndex ||
+                        secondDigitIndex == fractionIndex;
+
+                    if (!zeroDigitIsValid)
+                    {
+                        return JToken.Undefined(i++);
+                    }
                 }
 
                 int start = i;
@@ -138,7 +201,7 @@ namespace JakePerry.Text.Json
 
                 if (next < s.Length && !IsValidPostValueChar(s[next]))
                 {
-                    return new JToken(TokenType.Undefined, i, 0);
+                    return JToken.Undefined(i++);
                 }
 
                 return new JToken(TokenType.Number, start, next - start);
@@ -167,13 +230,13 @@ namespace JakePerry.Text.Json
                 }
                 else
                 {
-                    return new JToken(TokenType.Undefined, i++, 0);
+                    return JToken.Undefined(i++);
                 }
 
                 int next = i + size;
                 if (next < s.Length && !IsValidPostValueChar(s[next]))
                 {
-                    return new JToken(TokenType.Undefined, i++, 0);
+                    return JToken.Undefined(i++);
                 }
 
                 int start = i;

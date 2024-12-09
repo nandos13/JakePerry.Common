@@ -49,5 +49,8 @@ namespace JakePerry.Text.Json
         {
             return source.Slice(start, count);
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static JToken Undefined(int index) => new(TokenType.Undefined, index, 0);
     }
 }

@@ -34,13 +34,28 @@
                 inputs.Add(@"0");
                 tokens.Add(new[] { TokenType.Number, TokenType.EndOfFile });
 
+                inputs.Add(@"1");
+                tokens.Add(new[] { TokenType.Number, TokenType.EndOfFile });
+
                 inputs.Add(@"-1");
+                tokens.Add(new[] { TokenType.Number, TokenType.EndOfFile });
+
+                inputs.Add(@"0.0");
+                tokens.Add(new[] { TokenType.Number, TokenType.EndOfFile });
+
+                inputs.Add(@"0.1");
                 tokens.Add(new[] { TokenType.Number, TokenType.EndOfFile });
 
                 inputs.Add(@"1.2");
                 tokens.Add(new[] { TokenType.Number, TokenType.EndOfFile });
 
-                inputs.Add(@"1.2e10");
+                inputs.Add(@"0e1");
+                tokens.Add(new[] { TokenType.Number, TokenType.EndOfFile });
+
+                inputs.Add(@"1.2e+10");
+                tokens.Add(new[] { TokenType.Number, TokenType.EndOfFile });
+
+                inputs.Add(@"1.2e-10");
                 tokens.Add(new[] { TokenType.Number, TokenType.EndOfFile });
 
                 inputs.Add(@"{ [ ] }");
