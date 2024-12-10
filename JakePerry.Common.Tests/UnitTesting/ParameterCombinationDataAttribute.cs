@@ -98,13 +98,9 @@ namespace JakePerry.UnitTesting
 
         public string? GetDisplayName(MethodInfo methodInfo, object?[]? data)
         {
-            if (data is not null)
-            {
-                var argsString = string.Join(",", data.Select(o => UnitTestingUtility.StringifyArgument(o)));
-                return $"{methodInfo.Name} ({argsString})";
-            }
-
-            return methodInfo.Name;
+            // TODO: Consider implementing printout replacement logic like the built in DynamicData attribute,
+            // but still fall back to this one...
+            return UnitTestingUtility.GetTestDisplayName(methodInfo, data);
         }
     }
 }

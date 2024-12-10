@@ -5,6 +5,9 @@ namespace JakePerry.Tests
     [TestClass]
     public class SR_Tests
     {
+        public static string GetTestDisplayName(MethodInfo method, object?[]? data)
+            => UnitTestingUtility.GetTestDisplayName(method, data);
+
         private static IDynamicTestData ReflectionMembers
         {
             get
@@ -36,7 +39,8 @@ namespace JakePerry.Tests
         }
 
         [TestMethod]
-        [DynamicData(nameof(ReflectionMembers))]
+        [DynamicData(nameof(ReflectionMembers),
+            DynamicDataDisplayName = nameof(GetTestDisplayName))]
         public void SR_GetInternalMembersViaReflection_DoesNotThrowAndIsNotNull(Func<MemberInfo> action)
         {
             var member = action.Invoke();
@@ -47,7 +51,8 @@ namespace JakePerry.Tests
         }
 
         [TestMethod]
-        [DynamicData(nameof(ExceptionResources))]
+        [DynamicData(nameof(ExceptionResources),
+            DynamicDataDisplayName = nameof(GetTestDisplayName))]
         public void GetResourceString_PredefinedResourceString_IsFound(string resource)
         {
             var resourceString = SR.GetResourceString(resource);

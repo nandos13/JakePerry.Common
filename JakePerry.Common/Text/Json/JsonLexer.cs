@@ -11,6 +11,12 @@ namespace JakePerry.Text.Json
         private const string kLiteralTrue = "true";
         private const string kLiteralNull = "null";
 
+        internal struct LexerState
+        {
+            internal int i;
+            internal bool insideEscapedString;
+        }
+
         // Copy of char.IsBetween - unavailable
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsBetween(char c, char minInclusive, char maxInclusive) =>
@@ -29,42 +35,162 @@ namespace JakePerry.Text.Json
             }
         }
 
-        private static JToken ReadString(scoped ReadOnlySpan<char> s, ref int i)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool ReadEscapedUnicodeHex(scoped ReadOnlySpan<char> s, int start)
+        {
+            if (start + 3 >= s.Length) return false;
+
+            for (int u = 0; u < 4; ++u)
+            {
+                if (!IsBetween(s[start + u], '0', '9') &&
+                    !IsBetween(s[start + u], 'a', 'f') &&
+                    !IsBetween(s[start + u], 'A', 'F'))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Read the next segment of an escaped string and produce a token representing the escaped char
+        /// or a span of raw (unescaped) string data.
+        /// <para/>
+        /// Note that validation of all escaped chars is performed in the <see cref="ReadString"/> method.
+        /// This method blindly trusts that data is valid; no additional checks are performed.
+        /// </summary>
+        private static JToken ReadNextEscapedStringToken(scoped ReadOnlySpan<char> s, ref int i, ref LexerState state)
+        {
+            // End of string
+            if (s[i] == '\"')
+            {
+                state.insideEscapedString = false;
+                return new(TokenType.EndEscapedString, i++, 1);
+            }
+
+            // Escaper
+            if (s[i] == '\\')
+            {
+                int next = i + 1;
+                JToken token = s[next] switch
+                {
+                    '\"' => new(TokenType.EscapedQuotationMark, i, 2),
+                    '/' => new(TokenType.EscapedSolidus, i, 2),
+                    '\\' => new(TokenType.EscapedReverseSolidus, i, 2),
+                    'b' => new(TokenType.EscapedBackspace, i, 2),
+                    'f' => new(TokenType.EscapedFormfeed, i, 2),
+                    'n' => new(TokenType.EscapedLinefeed, i, 2),
+                    'r' => new(TokenType.EscapedCarriageReturn, i, 2),
+                    't' => new(TokenType.EscapedHorizontalTab, i, 2),
+                    'u' => new(TokenType.EscapedUnicodeHex, i, 6),
+
+                    // Invalid escaped chars should be caught in ReadString and result in an Undefined token.
+                    // This code path should not run under normal circumstances.
+                    _ => throw new InternalFailureException("Unexpected invalid escape token encountered after validation pass.")
+                };
+
+                i += token.count;
+                return token;
+            }
+
+            int start = i++;
+            for (; i < s.Length; ++i)
+            {
+                if (s[i] == '\n' || s[i] == '\"' || s[i] == '\\')
+                    break;
+            }
+
+            return new JToken(TokenType.RawStringData, start, i - start);
+        }
+
+        /// <summary>
+        /// Read a string from the opening quotation mark, up until the closing unescaped quotation mark is found.
+        /// <para/>
+        /// If the string contains one or more escaped chars:
+        /// <para/>
+        /// <list type="bullet">
+        /// <item>
+        /// All escaped chars are fully validated (eg. escaped unicode hex '\u' tokens must be followed
+        /// by exactly 4 hex digits).
+        /// </item>
+        /// <item>
+        /// <paramref name="state"/>'s <see cref="LexerState.insideEscapedString"/> is set to <see langword="true"/>.
+        /// </item>
+        /// <item>
+        /// A token with type <see cref="TokenType.BeginEscapedString"/> is returned.
+        /// </item>
+        /// <item>
+        /// Subsequent token reads must use the <see cref="ReadNextEscapedStringToken"/> method to read segments of the string.
+        /// </item>
+        /// </list>
+        /// Otherwise, a token with type <see cref="TokenType.String"/> is returned, representing the entire string.
+        /// </summary>
+        private static JToken ReadString(scoped ReadOnlySpan<char> s, ref int i, ref LexerState state)
         {
             int start = i++;
 
-            bool escaping = false;
+            bool escaped = false;
             for (; i < s.Length; ++i)
             {
+                // Unescaped newline is invalid
+                if (s[i] == '\n')
+                {
+                    return JToken.Undefined(start);
+                }
+                // String end
+                if (s[i] == '\"')
+                {
+                    // If no escaped chars were encountered, return a regular string token
+                    if (!escaped)
+                    {
+                        int end = i++;
+                        return new JToken(TokenType.String, start, end - start + 1);
+                    }
+
+                    // Otherwise, return the BeginEscapedString
+                    i = start + 1;
+                    state.insideEscapedString = true;
+                    return new JToken(TokenType.BeginEscapedString, start, 1);
+                }
+
                 // Escaper
                 if (s[i] == '\\')
                 {
-                    escaping = !escaping;
+                    escaped = true;
 
-                    // TODO: Determine if this belongs here or should only be checked during parsing.
-                    // Unicode hex ie. '\u01CF'
-                    //if (escaping && )
-                    //    ;
+                    // Validate up to the end of the string
+                    int next = i + 1;
+                    if (next >= s.Length) break;
 
-                    continue;
+                    // Escaped Unicode must have exactly 4 hex digits
+                    if (s[next] == 'u')
+                    {
+                        if (!ReadEscapedUnicodeHex(s, next + 1))
+                        {
+                            return JToken.Undefined(start);
+                        }
+                        // Advance index to last hex digit (for loop will advance past it)
+                        i += 5;
+                    }
+                    else
+                    {
+                        char c = s[next];
+                        if (c == '\"' || c == '/' || c == '\\' ||
+                            c == 'b' || c == 'f' || c == 'n' || c == 'r' || c == 't')
+                        {
+                            ++i;
+                        }
+                        else
+                        {
+                            return JToken.Undefined(start);
+                        }
+                    }
                 }
-                // Newline
-                else if (s[i] == '\n')
-                {
-                    i = start;
-                    return JToken.Undefined(i++);
-                }
-                // Unescaped end quotation
-                else if (s[i] == '\"' && !escaping)
-                {
-                    int end = i++;
-                    return new JToken(TokenType.String, start, end - start + 1);
-                }
-
-                escaping = false;
             }
 
-            return new JToken(TokenType.EndOfFile, i, 0);
+            // Reaching EOF before string ends is invalid
+            return JToken.Undefined(start);
         }
 
         private static bool IsValidPostValueChar(char c)
@@ -73,7 +199,7 @@ namespace JakePerry.Text.Json
 
             // As far as the lexer is concerned, a numeric or literal value has come to a valid end
             // if it is followed by whitespace or one of the following chars.
-            // Of course, some of these chars would not form valid json, but the parser is responsible
+            // Of course, some of these chars would not form valid JSON, but the parser is responsible
             // for figuring that out.
             Span<char> validChars = stackalloc char[7] { '{', '}', '[', ']', ':', ',', '\"' };
             foreach (var c2 in validChars)
@@ -104,7 +230,7 @@ namespace JakePerry.Text.Json
                         // '1e5e6' - invalid
                         if (exponentIndex > -1)
                         {
-                            return JToken.Undefined(i++);
+                            return JToken.Undefined(i);
                         }
 
                         // Exponents without leading digits are invalid. Digit(s) do not have to be non-zero.
@@ -114,7 +240,7 @@ namespace JakePerry.Text.Json
                         // '-e5' - invalid
                         if (!anyDigit)
                         {
-                            return JToken.Undefined(i++);
+                            return JToken.Undefined(i);
                         }
 
                         exponentIndex = i;
@@ -138,7 +264,7 @@ namespace JakePerry.Text.Json
                         // '1e5.1' - invalid
                         if (fractionIndex > -1 || exponentIndex > -1)
                         {
-                            return JToken.Undefined(i++);
+                            return JToken.Undefined(i);
                         }
 
                         // Fractions without leading digits are invalid. Digit(s) do not have to be non-zero.
@@ -146,7 +272,7 @@ namespace JakePerry.Text.Json
                         if (!anyDigit)
                         {
                             // TODO: Consider supporting some enum of 'lexer failure reasons' on jtoken? (only when its undefined)
-                            return JToken.Undefined(i++);
+                            return JToken.Undefined(i);
                         }
 
                         fractionIndex = next;
@@ -172,7 +298,7 @@ namespace JakePerry.Text.Json
                 // '-' - invalid
                 if (!IsBetween(s[next - 1], '0', '9'))
                 {
-                    return JToken.Undefined(i++);
+                    return JToken.Undefined(i);
                 }
 
                 // Leading zeros are not valid.
@@ -192,7 +318,7 @@ namespace JakePerry.Text.Json
 
                     if (!zeroDigitIsValid)
                     {
-                        return JToken.Undefined(i++);
+                        return JToken.Undefined(i);
                     }
                 }
 
@@ -201,7 +327,7 @@ namespace JakePerry.Text.Json
 
                 if (next < s.Length && !IsValidPostValueChar(s[next]))
                 {
-                    return JToken.Undefined(i++);
+                    return JToken.Undefined(i);
                 }
 
                 return new JToken(TokenType.Number, start, next - start);
@@ -230,13 +356,13 @@ namespace JakePerry.Text.Json
                 }
                 else
                 {
-                    return JToken.Undefined(i++);
+                    return JToken.Undefined(i);
                 }
 
                 int next = i + size;
                 if (next < s.Length && !IsValidPostValueChar(s[next]))
                 {
-                    return JToken.Undefined(i++);
+                    return JToken.Undefined(i);
                 }
 
                 int start = i;
@@ -247,26 +373,41 @@ namespace JakePerry.Text.Json
         }
 
         /// <summary>
-        /// Read the next token, starting from index <paramref name="i"/>.
+        /// Read the next token, starting from the current index held by <paramref name="state"/>.
         /// Any preceding whitespace will be ignored.
         /// </summary>
         /// <param name="s">
-        /// Input span of json data.
+        /// Input span of JSON data.
         /// </param>
-        /// <param name="i">
-        /// Index at which to read. This method advances the value to the next read position.
+        /// <param name="state">
+        /// The current state of the lexer. This contains the index at which to read the next token,
+        /// as well as whether the cursor is within an escaped string.
+        /// This method advances the state to the next read position.
         /// </param>
         /// <returns>
         /// A <see cref="JToken"/> representation of the next token that is found
         /// in the data span <paramref name="s"/>.
         /// </returns>
-        internal static JToken NextToken(scoped ReadOnlySpan<char> s, ref int i)
+        internal static JToken NextToken(scoped ReadOnlySpan<char> s, ref LexerState state)
         {
+            ref int i = ref state.i;
+
+            // Continue reading an escaped string sequence
+            if (state.insideEscapedString)
+            {
+                if (i == s.Length)
+                {
+                    return new JToken(TokenType.EndOfFile, i, 0);
+                }
+
+                return ReadNextEscapedStringToken(s, ref i, ref state);
+            }
+
             SkipWhitespace(s, ref i);
 
             if (i == s.Length)
             {
-                return new JToken(TokenType.EndOfFile, i++, 0);
+                return new JToken(TokenType.EndOfFile, i, 0);
             }
 
             switch (s[i])
@@ -297,7 +438,7 @@ namespace JakePerry.Text.Json
                     }
                 case '\"':
                     {
-                        return ReadString(s, ref i);
+                        return ReadString(s, ref i, ref state);
                     }
                 default:
                     {
@@ -308,48 +449,46 @@ namespace JakePerry.Text.Json
 
         // TODO: Documentation. Mention how its used with the heap enumerator
         // to work around ref struct limitations.
-        // TODO: Possible to make some of this reusable, ie. pagination tokens?
-        //       Cursor<T>
         internal readonly struct Cursor
         {
-            private readonly int m_index;
+            private readonly LexerState m_state;
             private readonly bool m_end;
 
-            internal int Index => m_index;
+            internal LexerState State => m_state;
 
             internal bool IsEnd => m_end;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private Cursor(int index, bool end)
+            private Cursor(LexerState state, bool end)
             {
-                m_index = index;
+                m_state = state;
                 m_end = end;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal Cursor(int index) : this(index, false) { }
+            internal Cursor(LexerState state) : this(state, false) { }
 
             internal static Cursor Start
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => new(0);
+                get => new(new LexerState());
             }
 
             internal static Cursor End
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => new(-1, true);
+                get => new(new LexerState() { i = -1 }, true);
             }
         }
 
         /// <summary>
-        /// A stack-only struct that can be used to read json tokens using the
-        /// <see cref="NextToken(ReadOnlySpan{char}, ref int)"/> method.
+        /// A stack-only struct that can be used to read JSON tokens using the
+        /// <see cref="NextToken"/> method.
         /// </summary>
         internal ref struct Enumerator
         {
             private readonly ReadOnlySpan<char> m_span;
-            private int m_index;
+            private LexerState m_state;
             private JToken m_token;
             private bool m_moved;
 
@@ -365,7 +504,7 @@ namespace JakePerry.Text.Json
             internal readonly Cursor Cursor
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => m_index > 0 && m_token.IsEnd ? Cursor.End : new(m_index);
+                get => m_moved && m_token.IsEnd ? Cursor.End : new(m_state);
             }
 
             internal ReadOnlySpan<char> Span
@@ -384,7 +523,7 @@ namespace JakePerry.Text.Json
             internal Enumerator(ReadOnlySpan<char> span, Cursor cursor)
             {
                 m_span = span;
-                m_index = cursor.Index;
+                m_state = cursor.State;
                 m_token = default;
             }
 
@@ -396,17 +535,17 @@ namespace JakePerry.Text.Json
                     return false;
                 }
 
-                m_token = NextToken(m_span, ref m_index);
+                m_token = NextToken(m_span, ref m_state);
                 m_moved = true;
                 return true;
             }
 
             /// <summary>
-            /// Reads all tokens from the json data in <paramref name="span"/> into
+            /// Reads all tokens from the JSON data in <paramref name="span"/> into
             /// the <paramref name="output"/> list.
             /// </summary>
             /// <param name="span">
-            /// Input span of json data.
+            /// Input span of JSON data.
             /// </param>
             /// <param name="output">
             /// The output token list.
@@ -429,11 +568,11 @@ namespace JakePerry.Text.Json
             }
 
             /// <summary>
-            /// Reads a number of tokens from the json data in <paramref name="span"/> into
+            /// Reads a number of tokens from the JSON data in <paramref name="span"/> into
             /// the <paramref name="output"/> buffer.
             /// </summary>
             /// <param name="span">
-            /// Input span of json data.
+            /// Input span of JSON data.
             /// </param>
             /// <param name="cursor">
             /// The cursor to a location in the <paramref name="span"/>.
@@ -486,7 +625,7 @@ namespace JakePerry.Text.Json
         }
 
         /// <summary>
-        /// A stack-only struct that can be used to read json tokens.
+        /// A stack-only struct that can be used to read JSON tokens.
         /// </summary>
         /// <seealso cref="Enumerator"/>
         internal readonly ref struct Enumerable
@@ -524,7 +663,7 @@ namespace JakePerry.Text.Json
         }
 
         /// <summary>
-        /// A reference-type enumerable implementation that can be used to read json tokens.
+        /// A reference-type enumerable implementation that can be used to read JSON tokens.
         /// <para/>
         /// This type fully implements the <see cref="IEnumerable{T}"/> interface, allowing it to be
         /// used with LINQ methods, etc.
@@ -593,7 +732,7 @@ namespace JakePerry.Text.Json
         }
 
         /// <summary>
-        /// Enumerates all tokens in the json data <paramref name="span"/>.
+        /// Enumerates all tokens in the JSON data <paramref name="span"/>.
         /// <para/>
         /// This method returns the stack-only ref struct <see cref="Enumerable"/>
         /// and can be used to iterate the tokens in place, such as directly in a <see langword="foreach"/> loop.
@@ -601,19 +740,19 @@ namespace JakePerry.Text.Json
         /// elsewhere for later use), use the <see cref="TokenizeHeapMemory(ReadOnlyMemory{char})"/> method.
         /// </summary>
         /// <param name="span">
-        /// Input span of json data.
+        /// Input span of JSON data.
         /// </param>
         internal static Enumerable TokenizeSpan(ReadOnlySpan<char> span) => new(span);
 
         /// <summary>
-        /// Enumerates all tokens in the json data stored in <paramref name="memory"/>.
+        /// Enumerates all tokens in the JSON data stored in <paramref name="memory"/>.
         /// <para/>
         /// This method returns a <see cref="HeapEnumerable"/> object, which implements the <see cref="IEnumerable{T}"/>
         /// interface. If this is not required, the <see cref="TokenizeSpan(ReadOnlySpan{char})"/>
-        /// method can be used to iterate json tokens entirely on the stack, avoiding additional overhead.
+        /// method can be used to iterate JSON tokens entirely on the stack, avoiding additional overhead.
         /// </summary>
         /// <param name="memory">
-        /// Input span of json data.
+        /// Input span of JSON data.
         /// </param>
         internal static HeapEnumerable TokenizeHeapMemory(ReadOnlyMemory<char> memory) => new(memory);
 

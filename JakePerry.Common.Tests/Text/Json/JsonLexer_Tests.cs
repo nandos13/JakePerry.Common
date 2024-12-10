@@ -1,22 +1,24 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 
 namespace JakePerry.Text.Json.Tests
 {
     [TestClass]
     public partial class JsonLexer_Tests
     {
-        private static IDynamicTestData EnumerateValidJsonInputAndExpectedResults()
+        public static string GetTestDisplayName(MethodInfo method, object?[]? data)
+            => UnitTestingUtility.GetTestDisplayName(method, data);
+
+        private static IDynamicTestData JsonAndExpectedTokenPairs()
         {
             var inputs = Json_TestData.ValidJsonInputs;
             var tokens = Json_TestData.ValidJsonInputTokens;
 
             for (int i = 0; i < inputs.Count; ++i)
             {
-                yield return new object[] { inputs[i], tokens[i].Select(t => (object)t) };
+                yield return new object[] { inputs[i], tokens[i].Select(t => (object)t).ToArray() };
             }
         }
-
-        private static IDynamicTestData JsonAndExpectedTokenPairs => EnumerateValidJsonInputAndExpectedResults();
 
         [ClassInitialize]
         [SuppressMessage("Style", "IDE0060:Remove unused parameter",
@@ -27,7 +29,9 @@ namespace JakePerry.Text.Json.Tests
         }
 
         [TestMethod]
-        [DynamicData(nameof(JsonAndExpectedTokenPairs))]
+        [DynamicData(nameof(JsonAndExpectedTokenPairs),
+            DynamicDataSourceType.Method,
+            DynamicDataDisplayName = nameof(GetTestDisplayName))]
         public void Tokenize_FromValidJson_ReturnsCorrectResults(
             string json,
             IEnumerable<object> expected)
