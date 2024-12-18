@@ -23,21 +23,21 @@ namespace JakePerry.Text
         }
 
         /// <summary>
-        /// Find all instances of specified separator characters in the source string
-        /// and populates a stack list with the separator indexes.
+        /// Find all instances of specified characters in the source string
+        /// and populates a stack list with the indexes.
         /// </summary>
         /// <param name="str">The source string.</param>
-        /// <param name="separators">A span of separator characters.</param>
+        /// <param name="chars">A span of characters to find.</param>
         /// <param name="indexes">Stack list to receive output indexes.</param>
-        internal static void FindSeparatorChars(
+        internal static void FindChars(
             scoped ReadOnlySpan<char> str,
-            scoped ReadOnlySpan<char> separators,
+            scoped ReadOnlySpan<char> chars,
             scoped ref StackList<int> indexes)
         {
             for (int i = 0; i < str.Length; ++i)
             {
                 char c = str[i];
-                foreach (var c2 in separators)
+                foreach (var c2 in chars)
                     if (c == c2)
                     {
                         indexes.Append(i);
@@ -47,43 +47,43 @@ namespace JakePerry.Text
         }
 
         /// <summary>
-        /// Find all instances of a specified separator string in the source string
-        /// and populates a stack list with the separator indexes.
+        /// Find all instances of a specified substring in the source string
+        /// and populates a stack list with the indexes.
         /// </summary>
         /// <param name="str">The source string.</param>
-        /// <param name="separator">A separator string.</param>
+        /// <param name="substring">A string to find.</param>
         /// <param name="indexes">Stack list to receive output indexes.</param>
-        internal static void FindSeparatorString(
+        internal static void FindString(
             scoped ReadOnlySpan<char> str,
-            scoped ReadOnlySpan<char> separator,
+            scoped ReadOnlySpan<char> substring,
             scoped ref StackList<int> indexes)
         {
             int i = 0;
             while (!str.IsEmpty)
             {
-                int index = str.IndexOf(separator);
+                int index = str.IndexOf(substring);
                 if (index < 0) break;
 
                 i += index;
                 indexes.Append(i);
 
-                i += separator.Length;
-                str = str.Slice(index + separator.Length);
+                i += substring.Length;
+                str = str.Slice(index + substring.Length);
             }
         }
 
         /// <summary>
-        /// Find all instances of specified separator strings in the source string
-        /// and populates a stack list with the separator indexes and a corresponding
-        /// stack list with the lengths of the separators that were found.
+        /// Find all instances of specified substrings in the source string
+        /// and populates a stack list with the indexes and a corresponding
+        /// stack list with the lengths of the strings that were found.
         /// </summary>
         /// <param name="str">The source string.</param>
-        /// <param name="separators">A span of separator characters.</param>
+        /// <param name="substrings">A span of strings to find.</param>
         /// <param name="indexes">Stack list to receive output indexes.</param>
-        /// <param name="lengths">Stack list to receive output separator lenghts.</param>
-        internal static void FindSeparatorStrings(
+        /// <param name="lengths">Stack list to receive output matching string lenghts.</param>
+        internal static void FindStrings(
             scoped ReadOnlySpan<char> str,
-            scoped ReadOnlySpan<string> separators,
+            scoped ReadOnlySpan<string> substrings,
             scoped ref StackList<int> indexes,
             scoped ref StackList<int> lengths)
         {
@@ -92,9 +92,9 @@ namespace JakePerry.Text
             {
                 char c = str[i];
 
-                for (int j = 0; j < separators.Length; ++j)
+                for (int j = 0; j < substrings.Length; ++j)
                 {
-                    string s = separators[j];
+                    string s = substrings[j];
 
                     int sepLength = s?.Length ?? 0;
                     if (sepLength == 0 || sepLength > remaining) continue;

@@ -35,7 +35,6 @@ namespace JakePerry
         /// </summary>
         private static void SplitFromKnownIndexes(
             in Substring s,
-            int initialOffset,
             scoped ref StackList<(int Offset, int Count)> splits,
             scoped ReadOnlySpan<int> indexes,
             scoped ReadOnlySpan<int> lengths,
@@ -43,6 +42,8 @@ namespace JakePerry
             int count,
             StringSplitOptions options)
         {
+            int initialOffset = s.StartIndex;
+
             int offset = 0;
             int splitCount = 0;
 
@@ -88,11 +89,9 @@ namespace JakePerry
                 throw new ArgumentOutOfRangeException(nameof(count), count, SR.ArgumentOutOfRange_NeedNonNegNum);
             }
 
-            int initialOffset = s.StartIndex;
-
             if (count <= 1 || s.IsEmpty)
             {
-                ProcessSplit(s, initialOffset, ref splits, options);
+                ProcessSplit(s, s.StartIndex, ref splits, options);
                 return;
             }
 
@@ -104,17 +103,17 @@ namespace JakePerry
             }
             else
             {
-                StringUtility.FindSeparatorChars(s.AsSpan(), separators, ref indexes);
+                StringUtility.FindChars(s.AsSpan(), separators, ref indexes);
             }
 
             var indexSpan = indexes.AsSpan();
             if (indexSpan.IsEmpty)
             {
-                ProcessSplit(s, initialOffset, ref splits, options);
+                ProcessSplit(s, s.StartIndex, ref splits, options);
                 return;
             }
 
-            SplitFromKnownIndexes(s, initialOffset, ref splits, indexSpan, default, 1, count, options);
+            SplitFromKnownIndexes(s, ref splits, indexSpan, default, 1, count, options);
 
             indexes.Dispose();
         }
@@ -134,14 +133,12 @@ namespace JakePerry
 
             JPDebug.Assert(separator is not null || !separators.IsEmpty);
 
-            int initialOffset = s.StartIndex;
-
             // This value is -1 if we're using multiple separators
             int sepLength = separator?.Length ?? -1;
 
             if (count <= 1 || s.IsEmpty || sepLength == 0)
             {
-                ProcessSplit(s, initialOffset, ref splits, options);
+                ProcessSplit(s, s.StartIndex, ref splits, options);
                 return;
             }
 
@@ -152,21 +149,21 @@ namespace JakePerry
 
             if (separator is not null)
             {
-                StringUtility.FindSeparatorString(s.AsSpan(), separator, ref indexes);
+                StringUtility.FindString(s.AsSpan(), separator, ref indexes);
             }
             else
             {
-                StringUtility.FindSeparatorStrings(s.AsSpan(), separators, ref indexes, ref lengths);
+                StringUtility.FindStrings(s.AsSpan(), separators, ref indexes, ref lengths);
             }
 
             var indexSpan = indexes.AsSpan();
             if (indexSpan.IsEmpty)
             {
-                ProcessSplit(s, initialOffset, ref splits, options);
+                ProcessSplit(s, s.StartIndex, ref splits, options);
                 return;
             }
 
-            SplitFromKnownIndexes(s, initialOffset, ref splits, indexSpan, lengths.AsSpan(), sepLength, count, options);
+            SplitFromKnownIndexes(s, ref splits, indexSpan, lengths.AsSpan(), sepLength, count, options);
 
             indexes.Dispose();
             lengths.Dispose();
