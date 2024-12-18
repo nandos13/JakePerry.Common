@@ -10,7 +10,11 @@ namespace JakePerry.Collections
         private T[] m_fromPool;
         private int m_pos;
 
-        public int Count => m_pos;
+        public int Count
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => m_pos;
+        }
 
         public StackList(Span<T> span)
         {
@@ -20,6 +24,7 @@ namespace JakePerry.Collections
 
         public ref T this[int i]
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 JPDebug.Assert(i > -1 && i < m_pos);
@@ -60,8 +65,8 @@ namespace JakePerry.Collections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Append(T item)
         {
-            var pos = m_pos;
-            var span = m_span;
+            int pos = m_pos;
+            Span<T> span = m_span;
 
             if ((uint)pos < (uint)span.Length)
             {
@@ -72,6 +77,73 @@ namespace JakePerry.Collections
             {
                 ExpandAndAppend(item);
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T Peek()
+        {
+            int pos = m_pos - 1;
+            if ((uint)pos < 0)
+            {
+                throw new InvalidOperationException("List empty");
+            }
+
+            Span<T> span = m_span;
+
+            ref T item = ref span[pos];
+
+            return ref item;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryPeek(ref T item)
+        {
+            int pos = m_pos - 1;
+            if ((uint)pos < 0)
+            {
+                item = default;
+                return false;
+            }
+
+            Span<T> span = m_span;
+
+            item = ref span[pos];
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T Pop()
+        {
+            int pos = m_pos - 1;
+            if ((uint)pos < 0)
+            {
+                throw new InvalidOperationException("List empty");
+            }
+
+            Span<T> span = m_span;
+
+            T item = span[pos];
+            m_pos = pos;
+
+            return item;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryPop(out T item)
+        {
+            int pos = m_pos - 1;
+            if ((uint)pos < 0)
+            {
+                item = default;
+                return false;
+            }
+
+            Span<T> span = m_span;
+
+            item = span[pos];
+            m_pos = pos;
+
+            return true;
         }
 
         public ReadOnlySpan<T> AsSpan()
