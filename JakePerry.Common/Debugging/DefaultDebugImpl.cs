@@ -22,6 +22,7 @@ namespace JakePerry.Debugging
             return string.Concat(message, kJoin, trace);
         }
 
+        [Conditional("DEBUG")]
         internal void Assert(bool condition, string message)
         {
             System.Diagnostics.Debug.Assert(condition, message);

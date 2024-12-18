@@ -2,6 +2,7 @@
 using JakePerry.Threading;
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace JakePerry
 {
@@ -17,10 +18,11 @@ namespace JakePerry
         [ThreadStatic]
         private static IDebugImpl _implThread;
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private static IDebugImpl GetImpl()
         {
             var impl = _implThread;
-            if (impl == null)
+            if (impl is null)
             {
                 bool acquiredLock = false;
                 try
@@ -35,6 +37,7 @@ namespace JakePerry
             return impl;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static string Stringify(object message)
         {
             if (message is string s) return s;
@@ -44,47 +47,57 @@ namespace JakePerry
         }
 
         /// <inheritdoc cref="IDebugImpl.Assert(bool, string)"/>
+        [Conditional("DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void Assert(bool condition, string message)
         {
             GetImpl()?.Assert(condition, message);
         }
 
         /// <inheritdoc cref="IDebugImpl.Assert(bool, string)"/>
+        [Conditional("DEBUG")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void Assert(bool condition)
         {
             Assert(condition, "Assertion failure.");
         }
 
         /// <inheritdoc cref="IDebugImpl.LogError(bool, string)"/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void LogError(bool trace, object message)
         {
             GetImpl()?.LogError(trace, Stringify(message));
         }
 
         /// <inheritdoc cref="IDebugImpl.LogError(StackTrace, string)"/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void LogError(StackTrace trace, object message)
         {
             GetImpl()?.LogError(trace, Stringify(message));
         }
 
         /// <inheritdoc cref="IDebugImpl.LogError(bool, string)"/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void LogError(object message)
         {
             LogError(true, message);
         }
 
         /// <inheritdoc cref="IDebugImpl.LogInfo(bool, string)"/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void LogInfo(bool trace, object message)
         {
             GetImpl()?.LogInfo(trace, Stringify(message));
         }
 
         /// <inheritdoc cref="IDebugImpl.LogException(Exception)"/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void LogException(Exception exception)
         {
             GetImpl()?.LogException(exception);
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void SetImplementation(IDebugImpl impl)
         {
             bool acquiredLock = false;
@@ -97,16 +110,19 @@ namespace JakePerry
             finally { _lock.ReleaseLock(acquiredLock); }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void SetImplementationForThread(IDebugImpl impl)
         {
             _implThread = impl;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void ResetImplementation()
         {
             SetImplementation(DefaultDebugImpl.Instance);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void ResetImplementationForThread()
         {
             SetImplementationForThread(DefaultDebugImpl.Instance);
