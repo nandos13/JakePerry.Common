@@ -16,4 +16,7 @@
     <NoWarn>1701;1702;CS1573;CS1591</NoWarn>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.0" />
+  </ItemGroup>
 </Project>

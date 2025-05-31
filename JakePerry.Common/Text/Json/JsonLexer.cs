@@ -556,7 +556,7 @@ namespace JakePerry.Text.Json
             /// <exception cref="ArgumentNullException"/>
             internal static List<JToken> Read(in ReadOnlySpan<char> span, List<JToken> output)
             {
-                _ = output ?? throw new ArgumentNullException(nameof(output));
+                Enforce.Argument(output, nameof(output)).IsNotNull();
 
                 var enumerator = new Enumerator(span);
                 while (enumerator.MoveNext())
@@ -592,7 +592,7 @@ namespace JakePerry.Text.Json
             /// <exception cref="ArgumentNullException"/>
             internal static int Read(in ReadOnlySpan<char> span, ref Cursor cursor, int offset, int count, JToken[] output)
             {
-                _ = output ?? throw new ArgumentNullException(nameof(output));
+                Enforce.Argument(output, nameof(output)).IsNotNull();
 
                 if (cursor.IsEnd) throw new ArgumentException("Cursor reached end.", nameof(cursor));
 
@@ -759,7 +759,7 @@ namespace JakePerry.Text.Json
         /// <inheritdoc cref="TokenizeHeapMemory(ReadOnlyMemory{char})"/>
         internal static HeapEnumerable TokenizeHeapMemory(string buffer)
         {
-            _ = buffer ?? throw new ArgumentNullException(nameof(buffer));
+            Enforce.Argument(buffer, nameof(buffer)).IsNotNull();
 
             return new(buffer.AsMemory());
         }

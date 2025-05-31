@@ -37,10 +37,10 @@ namespace JakePerry.Collections
             int l = m_span.Length;
             int capacity = Math.Max(l != 0 ? l * 2 : 4, l + required);
 
-            var array = ArrayPool<T>.Shared.Rent(capacity);
+            T[] array = ArrayPool<T>.Shared.Rent(capacity);
             m_span.CopyTo(array);
 
-            var toReturn = m_fromPool;
+            T[] toReturn = m_fromPool;
             m_span = m_fromPool = array;
 
             if (toReturn is not null)

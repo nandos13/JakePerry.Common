@@ -2,6 +2,7 @@
 using JakePerry.Threading;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace JakePerry
 {
@@ -114,9 +115,9 @@ namespace JakePerry
         /// </param>
         protected ObjectPool(Func<T> activator, Action<T> teardownCallback, bool dontThrowOnActivatorNull = false)
         {
-            if (!dontThrowOnActivatorNull && activator is null)
+            if (!dontThrowOnActivatorNull)
             {
-                throw new ArgumentNullException(nameof(activator));
+                Enforce.Argument(activator, nameof(activator)).IsNotNull();
             }
 
             m_activator = activator;
@@ -146,7 +147,7 @@ namespace JakePerry
         /// <inheritdoc cref="ObjectPool{T}(Func{T}, Action{T}, bool)"/>
         public ObjectPool(Action<T> teardownCallback)
         {
-            var ctor = ReflectionEx.GetConstructor(typeof(T), throwOnError: false);
+            ConstructorInfo ctor = ReflectionEx.GetConstructor(typeof(T), throwOnError: false);
 
             // The default constructor ObjectPool() may be implicitly invoked by
             // derived class constructors. In such case, a null constructor may be valid,
@@ -183,7 +184,7 @@ namespace JakePerry
         /// </returns>
         protected virtual T Activate()
         {
-            var func = m_activator;
+            Func<T> func = m_activator;
             if (func is null)
             {
                 throw new NotImplementedException(
@@ -230,8 +231,8 @@ namespace JakePerry
         /// </remarks>
         private bool FastContains(T obj)
         {
-            var asObject = (object)obj;
-            foreach (var o in m_pool)
+            object asObject = (object)obj;
+            foreach (T o in m_pool)
             {
                 if (o == asObject) return true;
             }
@@ -254,7 +255,7 @@ namespace JakePerry
                 // Rent from the pool, if it's not empty.
                 if (index > -1)
                 {
-                    var obj = m_pool[index];
+                    T obj = m_pool[index];
                     m_pool.RemoveAt(index);
 
                     return obj;
@@ -285,7 +286,7 @@ namespace JakePerry
         /// </remarks>
         public T RentBest(IComparer<T> comparer)
         {
-            _ = comparer ?? throw new ArgumentNullException(nameof(comparer));
+            Enforce.Argument(comparer, nameof(comparer)).IsNotNull();
 
             bool acquiredLock = false;
             try
@@ -295,10 +296,10 @@ namespace JakePerry
                 if (m_pool.Count > 1)
                 {
                     int bestIndex = 0;
-                    var best = m_pool[0];
+                    T best = m_pool[0];
                     for (int i = 1; i < m_pool.Count; ++i)
                     {
-                        var other = m_pool[i];
+                        T other = m_pool[i];
                         if (comparer.Compare(best, other) < 0)
                         {
                             bestIndex = i;
@@ -323,8 +324,8 @@ namespace JakePerry
         /// </param>
         public T RentBest(Comparison<T> comparison)
         {
-            var comparer = ComparisonWrapper<T>.Acquire(comparison);
-            var rental = RentBest(comparer);
+            ComparisonWrapper<T> comparer = ComparisonWrapper<T>.Acquire(comparison);
+            T rental = RentBest(comparer);
 
             ComparisonWrapper<T>.Return(comparer);
 
@@ -353,7 +354,7 @@ namespace JakePerry
                 }
 
                 // Don't exceed the maximum capacity.
-                var pool = m_pool;
+                List<T> pool = m_pool;
                 if (pool.Capacity == 0 || pool.Count < pool.Capacity)
                 {
                     BeforeReturnToPool(obj);
@@ -419,7 +420,7 @@ namespace JakePerry
         /// <exception cref="ArgumentNullException"/>
         public bool TryRent(Predicate<T> predicate, out T match)
         {
-            _ = predicate ?? throw new ArgumentNullException(nameof(predicate));
+            Enforce.Argument(predicate, nameof(predicate)).IsNotNull();
 
             bool acquiredLock = false;
             try
@@ -428,7 +429,7 @@ namespace JakePerry
 
                 for (int i = 0; i < m_pool.Count; ++i)
                 {
-                    var obj = m_pool[i];
+                    T obj = m_pool[i];
                     if (predicate.Invoke(obj))
                     {
                         m_pool.RemoveAt(i);

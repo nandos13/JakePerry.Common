@@ -335,9 +335,9 @@ namespace JakePerry
         /// </param>
         public void Split(List<Substring> output, char separator, int? count = null, StringSplitOptions options = StringSplitOptions.None)
         {
-            _ = output ?? throw new ArgumentNullException(nameof(output));
+            Enforce.Argument(output, nameof(output)).IsNotNull();
 
-            var splits = new StackList<(int Offset, int Count)>(stackalloc (int, int)[Math.Min(this.Length, 128)]);
+            StackList<(int Offset, int Count)> splits = new(stackalloc (int, int)[Math.Min(this.Length, 128)]);
             Split(ref splits, separator, count, options);
 
             ConsolidateSplitList(ref splits, output);
@@ -346,9 +346,9 @@ namespace JakePerry
         /// <inheritdoc cref="Split(List{Substring}, char, int?, StringSplitOptions)"/>
         public void Split(List<Substring> output, ReadOnlySpan<char> separators, int? count = null, StringSplitOptions options = StringSplitOptions.None)
         {
-            _ = output ?? throw new ArgumentNullException(nameof(output));
+            Enforce.Argument(output, nameof(output)).IsNotNull();
 
-            var splits = new StackList<(int Offset, int Count)>(stackalloc (int, int)[Math.Min(this.Length, 128)]);
+            StackList<(int Offset, int Count)> splits = new(stackalloc (int, int)[Math.Min(this.Length, 128)]);
             Split(ref splits, separators, count, options);
 
             ConsolidateSplitList(ref splits, output);
@@ -357,9 +357,9 @@ namespace JakePerry
         /// <inheritdoc cref="Split(List{Substring}, char, int?, StringSplitOptions)"/>
         public void Split(List<Substring> output, string separator, int? count = null, StringSplitOptions options = StringSplitOptions.None)
         {
-            _ = output ?? throw new ArgumentNullException(nameof(output));
+            Enforce.Argument(output, nameof(output)).IsNotNull();
 
-            var splits = new StackList<(int Offset, int Count)>(stackalloc (int, int)[Math.Min(this.Length, 128)]);
+            StackList<(int Offset, int Count)> splits = new(stackalloc (int, int)[Math.Min(this.Length, 128)]);
             Split(ref splits, separator, count, options);
 
             ConsolidateSplitList(ref splits, output);
@@ -368,9 +368,9 @@ namespace JakePerry
         /// <inheritdoc cref="Split(List{Substring}, char, int?, StringSplitOptions)"/>
         public void Split(List<Substring> output, ReadOnlySpan<string> separators, int? count = null, StringSplitOptions options = StringSplitOptions.None)
         {
-            _ = output ?? throw new ArgumentNullException(nameof(output));
+            Enforce.Argument(output, nameof(output)).IsNotNull();
 
-            var splits = new StackList<(int Offset, int Count)>(stackalloc (int, int)[Math.Min(this.Length, 128)]);
+            StackList<(int Offset, int Count)> splits = new(stackalloc (int, int)[Math.Min(this.Length, 128)]);
             Split(ref splits, separators, count, options);
 
             ConsolidateSplitList(ref splits, output);

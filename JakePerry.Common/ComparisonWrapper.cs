@@ -25,9 +25,9 @@ namespace JakePerry
         /// <exception cref="ArgumentNullException"/>
         public static ComparisonWrapper<T> Acquire(Comparison<T> comparison)
         {
-            _ = comparison ?? throw new ArgumentNullException(nameof(comparison));
+            Enforce.Argument(comparison, nameof(comparison)).IsNotNull();
 
-            var wrapper = _inst ?? new();
+            ComparisonWrapper<T> wrapper = _inst ?? new();
             _inst = null;
 
             wrapper.m_comparison = comparison;

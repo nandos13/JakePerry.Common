@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace JakePerry.Threading
@@ -48,6 +49,7 @@ namespace JakePerry.Threading
         /// to set correct default values.
         /// </summary>
         /// <param name="dummy">Unused.</param>
+        [SuppressMessage("Style", "IDE0060:Remove unused parameter")]
         private SpinLockSlim(bool dummy)
         {
             m_lockToken = 0;

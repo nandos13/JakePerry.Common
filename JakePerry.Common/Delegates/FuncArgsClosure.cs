@@ -13,8 +13,10 @@ namespace JakePerry
 
         public FuncArgsClosure(Func<T, TResult> func, T arg0)
         {
-            this.m_func = func ?? throw new ArgumentNullException(nameof(func));
-            this.m_arg0 = arg0;
+            Enforce.Argument(func, nameof(func)).IsNotNull();
+
+            m_func = func;
+            m_arg0 = arg0;
         }
 
         public TResult Func()
@@ -40,9 +42,11 @@ namespace JakePerry
 
         public FuncArgsClosure(Func<T1, T2, TResult> func, T1 arg0, T2 arg1)
         {
-            this.m_func = func ?? throw new ArgumentNullException(nameof(func));
-            this.m_arg0 = arg0;
-            this.m_arg1 = arg1;
+            Enforce.Argument(func, nameof(func)).IsNotNull();
+
+            m_func = func;
+            m_arg0 = arg0;
+            m_arg1 = arg1;
         }
 
         public TResult Func()
@@ -69,10 +73,12 @@ namespace JakePerry
 
         public FuncArgsClosure(Func<T1, T2, T3, TResult> func, T1 arg0, T2 arg1, T3 arg2)
         {
-            this.m_func = func ?? throw new ArgumentNullException(nameof(func));
-            this.m_arg0 = arg0;
-            this.m_arg1 = arg1;
-            this.m_arg2 = arg2;
+            Enforce.Argument(func, nameof(func)).IsNotNull();
+
+            m_func = func;
+            m_arg0 = arg0;
+            m_arg1 = arg1;
+            m_arg2 = arg2;
         }
 
         public TResult Func()
@@ -105,11 +111,13 @@ namespace JakePerry
             T3 arg2,
             T4 arg3)
         {
-            this.m_func = func ?? throw new ArgumentNullException(nameof(func));
-            this.m_arg0 = arg0;
-            this.m_arg1 = arg1;
-            this.m_arg2 = arg2;
-            this.m_arg3 = arg3;
+            Enforce.Argument(func, nameof(func)).IsNotNull();
+
+            m_func = func;
+            m_arg0 = arg0;
+            m_arg1 = arg1;
+            m_arg2 = arg2;
+            m_arg3 = arg3;
         }
 
         public TResult Func()
@@ -148,12 +156,14 @@ namespace JakePerry
             T4 arg3,
             T5 arg4)
         {
-            this.m_func = func ?? throw new ArgumentNullException(nameof(func));
-            this.m_arg0 = arg0;
-            this.m_arg1 = arg1;
-            this.m_arg2 = arg2;
-            this.m_arg3 = arg3;
-            this.m_arg4 = arg4;
+            Enforce.Argument(func, nameof(func)).IsNotNull();
+
+            m_func = func;
+            m_arg0 = arg0;
+            m_arg1 = arg1;
+            m_arg2 = arg2;
+            m_arg3 = arg3;
+            m_arg4 = arg4;
         }
 
         public TResult Func()
@@ -195,13 +205,15 @@ namespace JakePerry
             T5 arg4,
             T6 arg5)
         {
-            this.m_func = func ?? throw new ArgumentNullException(nameof(func));
-            this.m_arg0 = arg0;
-            this.m_arg1 = arg1;
-            this.m_arg2 = arg2;
-            this.m_arg3 = arg3;
-            this.m_arg4 = arg4;
-            this.m_arg5 = arg5;
+            Enforce.Argument(func, nameof(func)).IsNotNull();
+
+            m_func = func;
+            m_arg0 = arg0;
+            m_arg1 = arg1;
+            m_arg2 = arg2;
+            m_arg3 = arg3;
+            m_arg4 = arg4;
+            m_arg5 = arg5;
         }
 
         public TResult Func()
@@ -246,14 +258,16 @@ namespace JakePerry
             T6 arg5,
             T7 arg6)
         {
-            this.m_func = func ?? throw new ArgumentNullException(nameof(func));
-            this.m_arg0 = arg0;
-            this.m_arg1 = arg1;
-            this.m_arg2 = arg2;
-            this.m_arg3 = arg3;
-            this.m_arg4 = arg4;
-            this.m_arg5 = arg5;
-            this.m_arg6 = arg6;
+            Enforce.Argument(func, nameof(func)).IsNotNull();
+
+            m_func = func;
+            m_arg0 = arg0;
+            m_arg1 = arg1;
+            m_arg2 = arg2;
+            m_arg3 = arg3;
+            m_arg4 = arg4;
+            m_arg5 = arg5;
+            m_arg6 = arg6;
         }
 
         public TResult Func()
@@ -301,15 +315,17 @@ namespace JakePerry
             T7 arg6,
             T8 arg7)
         {
-            this.m_func = func ?? throw new ArgumentNullException(nameof(func));
-            this.m_arg0 = arg0;
-            this.m_arg1 = arg1;
-            this.m_arg2 = arg2;
-            this.m_arg3 = arg3;
-            this.m_arg4 = arg4;
-            this.m_arg5 = arg5;
-            this.m_arg6 = arg6;
-            this.m_arg7 = arg7;
+            Enforce.Argument(func, nameof(func)).IsNotNull();
+
+            m_func = func;
+            m_arg0 = arg0;
+            m_arg1 = arg1;
+            m_arg2 = arg2;
+            m_arg3 = arg3;
+            m_arg4 = arg4;
+            m_arg5 = arg5;
+            m_arg6 = arg6;
+            m_arg7 = arg7;
         }
 
         public TResult Func()

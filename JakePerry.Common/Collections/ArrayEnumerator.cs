@@ -20,7 +20,8 @@ namespace JakePerry.Collections
 
         public ArrayEnumerator(T[] array)
         {
-            _ = array ?? throw new ArgumentNullException(nameof(array));
+            Enforce.Argument(array, nameof(array)).IsNotNull();
+
             m_array = array;
             m_index = -1;
             m_endIndex = m_array.Length;

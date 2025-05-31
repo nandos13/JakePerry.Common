@@ -63,11 +63,7 @@ namespace JakePerry
         /// </summary>
         public static byte ToByte(this ErrorHandlingPolicy value)
         {
-            if (value < ErrorHandlingPolicy.Default ||
-                value > ErrorHandlingPolicy.Throw)
-            {
-                throw new ArgumentOutOfRangeException(nameof(value));
-            }
+            Enforce.Argument(value, nameof(value)).IsDefinedEnum();
 
             return (byte)(int)value;
         }

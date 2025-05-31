@@ -125,14 +125,14 @@ namespace JakePerry.Reflection
             Substring typeName,
             bool throwOnError = true)
         {
-            if (typeName.Length == 0) throw new ArgumentException("Empty string.", nameof(typeName));
+            Enforce.Argument(typeName, nameof(typeName)).IsNotEmpty();
 
-            var key = new TypeKey(null, typeName);
+            TypeKey key = new(null, typeName);
             if (!_typeLookup.TryGetValue(key, out Type type))
             {
                 // Prevent storing keys with substring of a larger string
-                var typeNameStr = typeName.CopyString();
-                key = new TypeKey(null, typeNameStr);
+                string typeNameStr = typeName.CopyString();
+                key = new(null, typeNameStr);
 
                 type = Type.GetType(typeNameStr, throwOnError: throwOnError, ignoreCase: false);
                 _typeLookup[key] = type;
@@ -153,7 +153,8 @@ namespace JakePerry.Reflection
             string typeName,
             bool throwOnError = true)
         {
-            _ = typeName ?? throw new ArgumentNullException(nameof(typeName));
+            Enforce.Argument(typeName, nameof(typeName)).IsNotNull();
+
             return GetType((Substring)typeName, throwOnError);
         }
 
@@ -171,16 +172,15 @@ namespace JakePerry.Reflection
             Substring typeName,
             bool throwOnError = true)
         {
-            _ = assembly ?? throw new ArgumentNullException(nameof(assembly));
+            Enforce.Argument(assembly, nameof(assembly)).IsNotNull();
+            Enforce.Argument(typeName, nameof(typeName)).IsNotEmpty();
 
-            if (typeName.Length == 0) throw new ArgumentException("Empty string.", nameof(typeName));
-
-            var key = new TypeKey(assembly, typeName);
+            TypeKey key = new(assembly, typeName);
             if (!_typeLookup.TryGetValue(key, out Type type))
             {
                 // Prevent storing keys with substring of a larger string
-                var typeNameStr = typeName.CopyString();
-                key = new TypeKey(assembly, typeNameStr);
+                string typeNameStr = typeName.CopyString();
+                key = new(assembly, typeNameStr);
 
                 type = assembly.GetType(typeNameStr, throwOnError: throwOnError, ignoreCase: false);
                 _typeLookup[key] = type;
@@ -201,7 +201,8 @@ namespace JakePerry.Reflection
             string typeName,
             bool throwOnError = true)
         {
-            _ = typeName ?? throw new ArgumentNullException(nameof(typeName));
+            Enforce.Argument(typeName, nameof(typeName)).IsNotNull();
+
             return GetType(assembly, (Substring)typeName, throwOnError);
         }
 
@@ -230,16 +231,15 @@ namespace JakePerry.Reflection
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
             bool throwOnError = true)
         {
-            _ = type ?? throw new ArgumentNullException(nameof(type));
+            Enforce.Argument(type, nameof(type)).IsNotNull();
+            Enforce.Argument(name, nameof(name)).IsNotEmpty();
 
-            if (name.Length == 0) throw new ArgumentException("Empty string.", nameof(name));
-
-            var key = new FieldPropertyKey(type, name);
+            FieldPropertyKey key = new(type, name);
             if (!_fieldLookup.TryGetValue(key, out FieldInfo field))
             {
                 // Prevent storing keys with substring of a larger string
-                var nameStr = name.CopyString();
-                key = new FieldPropertyKey(type, nameStr);
+                string nameStr = name.CopyString();
+                key = new(type, nameStr);
 
                 field = type.GetField(nameStr, flags);
                 _fieldLookup[key] = field;
@@ -260,7 +260,8 @@ namespace JakePerry.Reflection
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
             bool throwOnError = true)
         {
-            _ = name ?? throw new ArgumentNullException(nameof(name));
+            Enforce.Argument(name, nameof(name)).IsNotNull();
+
             return GetField(type, (Substring)name, flags, throwOnError);
         }
 
@@ -289,16 +290,15 @@ namespace JakePerry.Reflection
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
             bool throwOnError = true)
         {
-            _ = type ?? throw new ArgumentNullException(nameof(type));
+            Enforce.Argument(type, nameof(type)).IsNotNull();
+            Enforce.Argument(name, nameof(name)).IsNotEmpty();
 
-            if (name.Length == 0) throw new ArgumentException("Empty string.", nameof(name));
-
-            var key = new FieldPropertyKey(type, name);
+            FieldPropertyKey key = new(type, name);
             if (!_propertyLookup.TryGetValue(key, out PropertyInfo property))
             {
                 // Prevent storing keys with substring of a larger string
-                var nameStr = name.CopyString();
-                key = new FieldPropertyKey(type, nameStr);
+                string nameStr = name.CopyString();
+                key = new(type, nameStr);
 
                 property = type.GetProperty(nameStr, flags);
                 _propertyLookup[key] = property;
@@ -319,7 +319,8 @@ namespace JakePerry.Reflection
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
             bool throwOnError = true)
         {
-            _ = name ?? throw new ArgumentNullException(nameof(name));
+            Enforce.Argument(name, nameof(name)).IsNotNull();
+
             return GetProperty(type, (Substring)name, flags, throwOnError);
         }
 
@@ -348,11 +349,10 @@ namespace JakePerry.Reflection
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
             bool throwOnError = true)
         {
-            _ = type ?? throw new ArgumentNullException(nameof(type));
+            Enforce.Argument(type, nameof(type)).IsNotNull();
+            Enforce.Argument(name, nameof(name)).IsNotEmpty();
 
-            if (name.Length == 0) throw new ArgumentException("Empty string.", nameof(name));
-
-            var key = new FieldPropertyKey(type, name);
+            FieldPropertyKey key = new(type, name);
 
             bool fieldWasCached = _fieldLookup.TryGetValue(key, out FieldInfo field);
             if (field is not null) return field;
@@ -393,7 +393,8 @@ namespace JakePerry.Reflection
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public,
             bool throwOnError = true)
         {
-            _ = name ?? throw new ArgumentNullException(nameof(name));
+            Enforce.Argument(name, nameof(name)).IsNotNull();
+
             return GetFieldOrProperty(type, (Substring)name, flags, throwOnError);
         }
 
@@ -422,9 +423,9 @@ namespace JakePerry.Reflection
             ParamsArray<Type> types = default,
             bool throwOnError = true)
         {
-            _ = type ?? throw new ArgumentNullException(nameof(type));
+            Enforce.Argument(type, nameof(type)).IsNotNull();
 
-            var key = new MethodKey(type, string.Empty, types: types);
+            MethodKey key = new(type, string.Empty, types: types);
             if (!_ctorLookup.TryGetValue(key, out ConstructorInfo ctor))
             {
                 if (types.Length == 0)
@@ -433,7 +434,7 @@ namespace JakePerry.Reflection
                 }
                 else
                 {
-                    var typesArray = types.ToArray();
+                    Type[] typesArray = types.ToArray();
 
                     ctor = type.GetConstructor(
                         bindingAttr: flags,
@@ -483,16 +484,15 @@ namespace JakePerry.Reflection
             ParamsArray<Type> types = default,
             bool throwOnError = true)
         {
-            _ = type ?? throw new ArgumentNullException(nameof(type));
+            Enforce.Argument(type, nameof(type)).IsNotNull();
+            Enforce.Argument(name, nameof(name)).IsNotEmpty();
 
-            if (name.Length == 0) throw new ArgumentException("Empty string.", nameof(name));
-
-            var key = new MethodKey(type, name, types: types);
+            MethodKey key = new(type, name, types: types);
             if (!_methodLookup.TryGetValue(key, out MethodInfo method))
             {
                 // Prevent storing keys with substring of a larger string
-                var nameStr = name.CopyString();
-                key = new MethodKey(type, nameStr, types: types);
+                string nameStr = name.CopyString();
+                key = new(type, nameStr, types: types);
 
                 if (types.Length == 0)
                 {
@@ -500,7 +500,7 @@ namespace JakePerry.Reflection
                 }
                 else
                 {
-                    var typesArray = types.ToArray();
+                    Type[] typesArray = types.ToArray();
 
                     method = type.GetMethod(
                         name: nameStr,
@@ -529,7 +529,8 @@ namespace JakePerry.Reflection
             ParamsArray<Type> types = default,
             bool throwOnError = true)
         {
-            _ = name ?? throw new ArgumentNullException(nameof(name));
+            Enforce.Argument(name, nameof(name)).IsNotNull();
+
             return GetMethod(type, (Substring)name, flags, types, throwOnError);
         }
 
@@ -550,9 +551,9 @@ namespace JakePerry.Reflection
             Type type,
             ParamsArray<Type> typeArguments)
         {
-            _ = type ?? throw new ArgumentNullException(nameof(type));
+            Enforce.Argument(type, nameof(type)).IsNotNull();
 
-            var key = new GenericTypeKey(type, typeArguments);
+            GenericTypeKey key = new(type, typeArguments);
             if (!_genericTypeLookup.TryGetValue(key, out Type genericType))
             {
                 genericType = type.MakeGenericType(typeArguments.ToArray());
@@ -579,9 +580,9 @@ namespace JakePerry.Reflection
             MethodInfo method,
             ParamsArray<Type> typeArguments)
         {
-            _ = method ?? throw new ArgumentNullException(nameof(method));
+            Enforce.Argument(method, nameof(method)).IsNotNull();
 
-            var key = new GenericMethodKey(method, typeArguments);
+            GenericMethodKey key = new(method, typeArguments);
             if (!_genericMethodLookup.TryGetValue(key, out MethodInfo genericMethod))
             {
                 genericMethod = method.MakeGenericMethod(typeArguments.ToArray());
@@ -601,7 +602,7 @@ namespace JakePerry.Reflection
         /// <exception cref="ArgumentNullException"/>
         public static object GetDefaultValue(Type type)
         {
-            _ = type ?? throw new ArgumentNullException(nameof(type));
+            Enforce.Argument(type, nameof(type)).IsNotNull();
 
             return type.IsValueType ? Activator.CreateInstance(type) : null;
         }
@@ -612,7 +613,7 @@ namespace JakePerry.Reflection
         /// <exception cref="ArgumentOutOfRangeException"/>
         public static ObjectPool<object[]> GetArrayPool(int length)
         {
-            if (length < 1 || length > 4) throw new ArgumentOutOfRangeException(nameof(length));
+            Enforce.Argument(length, nameof(length)).IsBetween(1, 4);
 
             return _arrayPools[length - 1];
         }
@@ -623,7 +624,7 @@ namespace JakePerry.Reflection
         /// <exception cref="ArgumentOutOfRangeException"/>
         public static object[] RentArray(int length)
         {
-            var pool = GetArrayPool(length);
+            ObjectPool<object[]> pool = GetArrayPool(length);
             return pool.Rent();
         }
 
@@ -636,7 +637,7 @@ namespace JakePerry.Reflection
         /// </remarks>
         public static ObjectPool<object[]>.RentalScope RentArrayInScope(int length, out object[] obj)
         {
-            var pool = GetArrayPool(length);
+            ObjectPool<object[]> pool = GetArrayPool(length);
             return pool.RentInScope(out obj);
         }
 
@@ -647,7 +648,7 @@ namespace JakePerry.Reflection
         /// <inheritdoc cref="RentArrayInScope(int, out object[])"/>
         public static ObjectPool<object[]>.RentalScope RentArrayWithArgsInScope(out object[] obj, object arg0)
         {
-            var scope = RentArrayInScope(1, out obj);
+            ObjectPool<object[]>.RentalScope scope = RentArrayInScope(1, out obj);
             obj[0] = arg0;
 
             return scope;
@@ -656,7 +657,7 @@ namespace JakePerry.Reflection
         /// <inheritdoc cref="RentArrayWithArgsInScope(out object[], object)"/>
         public static ObjectPool<object[]>.RentalScope RentArrayWithArgsInScope(out object[] obj, object arg0, object arg1)
         {
-            var scope = RentArrayInScope(2, out obj);
+            ObjectPool<object[]>.RentalScope scope = RentArrayInScope(2, out obj);
             obj[0] = arg0;
             obj[1] = arg1;
 
@@ -666,7 +667,7 @@ namespace JakePerry.Reflection
         /// <inheritdoc cref="RentArrayWithArgsInScope(out object[], object)"/>
         public static ObjectPool<object[]>.RentalScope RentArrayWithArgsInScope(out object[] obj, object arg0, object arg1, object arg2)
         {
-            var scope = RentArrayInScope(3, out obj);
+            ObjectPool<object[]>.RentalScope scope = RentArrayInScope(3, out obj);
             obj[0] = arg0;
             obj[1] = arg1;
             obj[2] = arg2;
@@ -677,7 +678,7 @@ namespace JakePerry.Reflection
         /// <inheritdoc cref="RentArrayWithArgsInScope(out object[], object)"/>
         public static ObjectPool<object[]>.RentalScope RentArrayWithArgsInScope(out object[] obj, object arg0, object arg1, object arg2, object arg3)
         {
-            var scope = RentArrayInScope(3, out obj);
+            ObjectPool<object[]>.RentalScope scope = RentArrayInScope(3, out obj);
             obj[0] = arg0;
             obj[1] = arg1;
             obj[2] = arg2;
@@ -693,7 +694,7 @@ namespace JakePerry.Reflection
         {
             if (array is null) return;
 
-            var pool = GetArrayPool(array.Length);
+            ObjectPool<object[]> pool = GetArrayPool(array.Length);
             pool.Return(array);
         }
     }

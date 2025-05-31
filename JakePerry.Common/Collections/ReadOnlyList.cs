@@ -79,7 +79,8 @@ namespace JakePerry.Collections
 
         public void CopyTo(List<T> list)
         {
-            _ = list ?? throw new ArgumentNullException(nameof(list));
+            Enforce.Argument(list, nameof(list)).IsNotNull();
+
             list.AddRange(m_list);
         }
 

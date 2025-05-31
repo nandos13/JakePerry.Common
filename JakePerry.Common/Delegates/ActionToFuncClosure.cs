@@ -14,7 +14,9 @@ namespace JakePerry
 
         public ActionToFuncClosure(Action action, TResult result)
         {
-            m_action = action ?? throw new ArgumentNullException(nameof(action));
+            Enforce.Argument(action, nameof(action)).IsNotNull();
+
+            m_action = action;
             m_result = result;
         }
 

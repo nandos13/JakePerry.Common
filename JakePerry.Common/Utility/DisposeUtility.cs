@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -50,6 +51,23 @@ namespace JakePerry
             arg0?.Dispose();
             arg1?.Dispose();
             arg2?.Dispose();
+        }
+
+        /// <summary>
+        /// Dispose a non-generic <see cref="IEnumerator"/> object,
+        /// if it implements the <see cref="IDisposable"/> interface.
+        /// <para/>
+        /// For more information, see the stackoverflow response
+        /// <see href="https://stackoverflow.com/a/232616">here</see>.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void DisposeEnumerator<T>(T enumerator)
+            where T : IEnumerator
+        {
+            if (enumerator is IDisposable d)
+            {
+                d.Dispose();
+            }
         }
 
         /// <summary>

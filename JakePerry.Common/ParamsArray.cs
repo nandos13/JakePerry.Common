@@ -64,7 +64,8 @@ namespace JakePerry
 
         public ParamsArray(object[] args)
         {
-            _ = args ?? throw new ArgumentNullException(nameof(args));
+            Enforce.Argument(args, nameof(args)).IsNotNull();
+
             int len = args.Length;
             this.m_arg0 = len > 0 ? args[0] : null;
             this.m_arg1 = len > 1 ? args[1] : null;
@@ -123,7 +124,7 @@ namespace JakePerry
             if (c == 2) return new ParamsArray(list[0], list[1]);
             if (c == 3) return new ParamsArray(list[0], list[1], list[2]);
 
-            var array = new object[c];
+            object[] array = new object[c];
             ((IList)list).CopyTo(array, 0);
 
             return new ParamsArray(array);
@@ -207,10 +208,10 @@ namespace JakePerry
         /// </remarks>
         public object[] ToArray()
         {
-            var len = Length;
+            int len = Length;
             if (len == 0) return Array.Empty<object>();
 
-            var copy = new object[len];
+            object[] copy = new object[len];
             copy[0] = m_arg0;
             for (int i = 1; i < len; ++i)
             {
@@ -235,14 +236,14 @@ namespace JakePerry
 
         public bool Equals(ParamsArray other, IEqualityComparer elementComparer)
         {
-            _ = elementComparer ?? throw new ArgumentNullException(nameof(elementComparer));
+            Enforce.Argument(elementComparer, nameof(elementComparer)).IsNotNull();
 
             if (Length != other.Length)
                 return false;
 
             // GetEnumerator() returns a value-type enumerator object. This will not allocate memory on the heap.
-            var enumeratorX = GetEnumerator();
-            var enumeratorY = other.GetEnumerator();
+            Enumerator enumeratorX = GetEnumerator();
+            Enumerator enumeratorY = other.GetEnumerator();
 
             // Iterate through all elements of each ParamsArray
             while (enumeratorX.MoveNext() & enumeratorY.MoveNext())
@@ -267,7 +268,7 @@ namespace JakePerry
 
         public int GetHashCode(EqualityComparer<object> elementComparer)
         {
-            _ = elementComparer ?? throw new ArgumentNullException(nameof(elementComparer));
+            Enforce.Argument(elementComparer, nameof(elementComparer)).IsNotNull();
 
             int hash = 29;
 

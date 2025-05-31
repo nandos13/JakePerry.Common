@@ -32,7 +32,7 @@ namespace JakePerry.Collections
         {
             get
             {
-                _ = key ?? throw new ArgumentNullException(nameof(key));
+                Enforce.Argument(key, nameof(key)).IsNotNull();
 
                 if (m_buffer is not null)
                 {
@@ -46,7 +46,8 @@ namespace JakePerry.Collections
             }
             set
             {
-                _ = key ?? throw new ArgumentNullException(nameof(key));
+                Enforce.Argument(key, nameof(key)).IsNotNull();
+
                 Insert(in key, in value, add: false);
             }
         }
@@ -120,7 +121,8 @@ namespace JakePerry.Collections
 
         public void Add(TKey key, TValue value)
         {
-            _ = key ?? throw new ArgumentNullException(nameof(key));
+            Enforce.Argument(key, nameof(key)).IsNotNull();
+
             Insert(in key, in value, add: true);
         }
 
@@ -166,7 +168,7 @@ namespace JakePerry.Collections
 
         private static void PrepareCopyTo<T>(T[] array, int arrayIndex, List<KeyValuePair<TKey, TValue>> buffer)
         {
-            _ = array ?? throw new ArgumentNullException(nameof(array));
+            Enforce.Argument(array, nameof(array)).IsNotNull();
 
             if (arrayIndex < 0 || arrayIndex >= array.Length)
             {
@@ -266,7 +268,9 @@ namespace JakePerry.Collections
 
             public KeyCollection(ContiguousDictionary<TKey, TValue> dictionary)
             {
-                m_dictionary = dictionary ?? throw new ArgumentNullException(nameof(dictionary));
+                Enforce.Argument(dictionary, nameof(dictionary)).IsNotNull();
+
+                m_dictionary = dictionary;
             }
 
             void ICollection<TKey>.Add(TKey item) { throw new NotSupportedException(SR.NotSupported_KeyCollectionSet); }
@@ -346,7 +350,9 @@ namespace JakePerry.Collections
 
             public ValueCollection(ContiguousDictionary<TKey, TValue> dictionary)
             {
-                m_dictionary = dictionary ?? throw new ArgumentNullException(nameof(dictionary));
+                Enforce.Argument(dictionary, nameof(dictionary)).IsNotNull();
+
+                m_dictionary = dictionary;
             }
 
             void ICollection<TValue>.Add(TValue item) { throw new NotSupportedException(SR.NotSupported_KeyCollectionSet); }

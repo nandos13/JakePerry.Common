@@ -34,8 +34,8 @@ namespace JakePerry
         /// <param name="state">The state object to be passed to the predicate.</param>
         public static int RemoveAll<T, S>(this List<T> source, Func<T, S, bool> match, S state)
         {
-            _ = source ?? throw new ArgumentNullException(nameof(source));
-            _ = match ?? throw new ArgumentNullException(nameof(match));
+            Enforce.Argument(source, nameof(source)).IsNotNull();
+            Enforce.Argument(match, nameof(match)).IsNotNull();
 
             // Allocate an object to capture our parameters
             var capture = new RemoveAllCapture<T, S>(match, state);
@@ -54,8 +54,8 @@ namespace JakePerry
         /// <returns>True if an element was removed; otherwise, false.</returns>
         public static bool RemoveFirst<T>(this List<T> source, Predicate<T> match)
         {
-            _ = source ?? throw new ArgumentNullException(nameof(source));
-            _ = match ?? throw new ArgumentNullException(nameof(match));
+            Enforce.Argument(source, nameof(source)).IsNotNull();
+            Enforce.Argument(match, nameof(match)).IsNotNull();
 
             for (int i = 0; i < source.Count; i++)
                 if (match.Invoke(source[i]))
@@ -76,8 +76,8 @@ namespace JakePerry
         /// <returns>True if an element was removed; otherwise, false.</returns>
         public static bool RemoveFirst<T, S>(this List<T> source, Func<T, S, bool> match, S state)
         {
-            _ = source ?? throw new ArgumentNullException(nameof(source));
-            _ = match ?? throw new ArgumentNullException(nameof(match));
+            Enforce.Argument(source, nameof(source)).IsNotNull();
+            Enforce.Argument(match, nameof(match)).IsNotNull();
 
             for (int i = 0; i < source.Count; i++)
                 if (match.Invoke(source[i], state))
@@ -97,8 +97,8 @@ namespace JakePerry
         /// <returns>True if an element was removed; otherwise, false.</returns>
         public static bool RemoveLast<T>(this List<T> source, Predicate<T> match)
         {
-            _ = source ?? throw new ArgumentNullException(nameof(source));
-            _ = match ?? throw new ArgumentNullException(nameof(match));
+            Enforce.Argument(source, nameof(source)).IsNotNull();
+            Enforce.Argument(match, nameof(match)).IsNotNull();
 
             for (int i = source.Count - 1; i >= 0; i--)
                 if (match.Invoke(source[i]))
@@ -119,8 +119,8 @@ namespace JakePerry
         /// <returns>True if an element was removed; otherwise, false.</returns>
         public static bool RemoveLast<T, S>(this List<T> source, Func<T, S, bool> match, S state)
         {
-            _ = source ?? throw new ArgumentNullException(nameof(source));
-            _ = match ?? throw new ArgumentNullException(nameof(match));
+            Enforce.Argument(source, nameof(source)).IsNotNull();
+            Enforce.Argument(match, nameof(match)).IsNotNull();
 
             for (int i = source.Count - 1; i >= 0; i--)
                 if (match.Invoke(source[i], state))

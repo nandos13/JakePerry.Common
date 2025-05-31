@@ -184,7 +184,9 @@ namespace JakePerry
 
             public Immutable(MutableDelegate<T> @delegate)
             {
-                m_delegate = @delegate ?? throw new ArgumentNullException(nameof(@delegate));
+                Enforce.Argument(@delegate, nameof(@delegate)).IsNotNull();
+
+                m_delegate = @delegate;
                 m_capture = @delegate.Capture();
             }
 
@@ -194,9 +196,9 @@ namespace JakePerry
                 private int m_index;
                 private T m_current;
 
-                public T Current => m_current;
+                public readonly T Current => m_current;
 
-                object IEnumerator.Current => this.Current;
+                readonly object IEnumerator.Current => this.Current;
 
                 public Enumerator(Immutable o)
                 {
@@ -205,7 +207,7 @@ namespace JakePerry
                     m_current = default;
                 }
 
-                void IDisposable.Dispose() { }
+                readonly void IDisposable.Dispose() { }
 
                 public bool MoveNext()
                 {

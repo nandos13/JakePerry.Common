@@ -56,7 +56,8 @@ namespace JakePerry
 
         public ParamsArray(T[] args)
         {
-            _ = args ?? throw new ArgumentNullException(nameof(args));
+            Enforce.Argument(args, nameof(args)).IsNotNull();
+
             int len = args.Length;
             this.m_arg0 = len > 0 ? args[0] : default;
             this.m_arg1 = len > 1 ? args[1] : default;
@@ -194,10 +195,10 @@ namespace JakePerry
         /// </remarks>
         public T[] ToArray()
         {
-            var len = Length;
+            int len = Length;
             if (len == 0) return Array.Empty<T>();
 
-            var copy = new T[len];
+            T[] copy = new T[len];
             copy[0] = m_arg0;
             for (int i = 1; i < len; ++i)
             {
@@ -233,14 +234,14 @@ namespace JakePerry
 
         public bool Equals(ParamsArray<T> other, IEqualityComparer<T> elementComparer)
         {
-            _ = elementComparer ?? throw new ArgumentNullException(nameof(elementComparer));
+            Enforce.Argument(elementComparer, nameof(elementComparer)).IsNotNull();
 
             if (Length != other.Length)
                 return false;
 
             // GetEnumerator() returns a value-type enumerator object. This will not allocate memory on the heap.
-            var enumeratorX = GetEnumerator();
-            var enumeratorY = other.GetEnumerator();
+            Enumerator enumeratorX = GetEnumerator();
+            Enumerator enumeratorY = other.GetEnumerator();
 
             // Iterate through all elements of each ParamsArray
             while (enumeratorX.MoveNext() & enumeratorY.MoveNext())
@@ -265,7 +266,7 @@ namespace JakePerry
 
         public int GetHashCode(EqualityComparer<T> elementComparer)
         {
-            _ = elementComparer ?? throw new ArgumentNullException(nameof(elementComparer));
+            Enforce.Argument(elementComparer, nameof(elementComparer)).IsNotNull();
 
             int hash = 29;
 
@@ -304,21 +305,21 @@ namespace JakePerry
         /// </remarks>
         public ParamsArray<TOther> Select<TOther>(Func<T, int, TOther> selector)
         {
-            _ = selector ?? throw new ArgumentNullException(nameof(selector));
+            Enforce.Argument(selector, nameof(selector)).IsNotNull();
 
             int c = Length;
             if (c == 0) return ParamsArray<TOther>.Empty;
 
-            var cast0 = selector.Invoke(m_arg0, 0);
+            TOther cast0 = selector.Invoke(m_arg0, 0);
             if (c == 1) return new ParamsArray<TOther>(cast0);
 
-            var cast1 = selector.Invoke(m_arg1, 1);
+            TOther cast1 = selector.Invoke(m_arg1, 1);
             if (c == 2) return new ParamsArray<TOther>(cast0, cast1);
 
-            var cast2 = selector.Invoke(m_arg2, 2);
+            TOther cast2 = selector.Invoke(m_arg2, 2);
             if (c == 3) return new ParamsArray<TOther>(cast0, cast1, cast2);
 
-            var array = new TOther[c];
+            TOther[] array = new TOther[c];
             array[0] = cast0;
             array[1] = cast1;
             array[2] = cast2;
@@ -337,21 +338,21 @@ namespace JakePerry
         /// <inheritdoc cref="Select{TOther}(Func{T, int, TOther})"/>
         public ParamsArray<TOther> Select<TOther>(Func<T, TOther> selector)
         {
-            _ = selector ?? throw new ArgumentNullException(nameof(selector));
+            Enforce.Argument(selector, nameof(selector)).IsNotNull();
 
             int c = Length;
             if (c == 0) return ParamsArray<TOther>.Empty;
 
-            var cast0 = selector.Invoke(m_arg0);
+            TOther cast0 = selector.Invoke(m_arg0);
             if (c == 1) return new ParamsArray<TOther>(cast0);
 
-            var cast1 = selector.Invoke(m_arg1);
+            TOther cast1 = selector.Invoke(m_arg1);
             if (c == 2) return new ParamsArray<TOther>(cast0, cast1);
 
-            var cast2 = selector.Invoke(m_arg2);
+            TOther cast2 = selector.Invoke(m_arg2);
             if (c == 3) return new ParamsArray<TOther>(cast0, cast1, cast2);
 
-            var array = new TOther[c];
+            TOther[] array = new TOther[c];
             array[0] = cast0;
             array[1] = cast1;
             array[2] = cast2;

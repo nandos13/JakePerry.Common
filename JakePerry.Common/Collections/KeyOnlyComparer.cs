@@ -25,7 +25,8 @@ namespace JakePerry.Collections
 
         public KeyOnlyComparer(Comparers<TKey> comparers)
         {
-            if (comparers.IsNull) throw new ArgumentNullException(nameof(comparers));
+            Enforce.Argument(comparers, nameof(comparers)).IsInValidState();
+
             m_cmp = comparers;
         }
 

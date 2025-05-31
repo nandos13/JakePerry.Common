@@ -57,10 +57,11 @@ namespace JakePerry
         /// <exception cref="ArgumentNullException"/>
         public Response<V> Cast<V>(Func<T, V> selector)
         {
-            _ = selector ?? throw new ArgumentNullException(nameof(selector));
+            Enforce.Argument(selector, nameof(selector)).IsNotNull();
+
             if (m_inner.Success)
             {
-                var v = selector.Invoke(m_value);
+                V v = selector.Invoke(m_value);
                 return new Response<V>(v);
             }
             else

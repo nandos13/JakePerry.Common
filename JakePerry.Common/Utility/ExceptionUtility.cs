@@ -12,9 +12,9 @@ namespace JakePerry
 
             if (exception is null) return;
 
-            var field = ReflectionEx.GetField(typeof(Exception), "_remoteStackTraceString", kFlags);
+            FieldInfo field = ReflectionEx.GetField(typeof(Exception), "_remoteStackTraceString", kFlags);
 
-            var nl = Environment.NewLine;
+            string nl = Environment.NewLine;
             stackTrace += string.Concat(nl, SR.Exception_EndStackTraceFromPreviousThrow, nl);
 
             field.SetValue(exception, stackTrace);

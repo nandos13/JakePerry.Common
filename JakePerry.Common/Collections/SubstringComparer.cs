@@ -28,7 +28,8 @@ namespace JakePerry.Collections
 
             public override int GetHashCode(Substring obj)
             {
-                _ = obj.SourceString ?? throw new ArgumentNullException(nameof(obj));
+                Enforce.Argument(obj.SourceString, nameof(obj)).IsNotNull();
+
                 return obj.GetHashCode();
             }
         }

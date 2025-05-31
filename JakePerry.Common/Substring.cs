@@ -36,11 +36,13 @@ namespace JakePerry
         /// </summary>
         public int StartIndex => m_start;
 
-        public static Substring Empty => new Substring(string.Empty, 0, 0);
+        public static Substring Empty => new(string.Empty, 0, 0);
 
         public Substring(string value, int startIndex, int length)
         {
-            m_value = value ?? throw new ArgumentNullException(nameof(value));
+            Enforce.Argument(value, nameof(value)).IsNotNull();
+
+            m_value = value;
 
             if (startIndex < 0 || startIndex > value.Length)
             {
@@ -69,7 +71,7 @@ namespace JakePerry
 
         public Substring(string value, int startIndex)
         {
-            m_value = value ?? throw new ArgumentNullException(nameof(value));
+            Enforce.Argument(value, nameof(value)).IsNotNull();
 
             this = new Substring(value, startIndex, value.Length - startIndex);
         }
@@ -78,7 +80,7 @@ namespace JakePerry
 
         public Substring(string value, Index startIndex)
         {
-            _ = value ?? throw new ArgumentNullException(nameof(value));
+            Enforce.Argument(value, nameof(value)).IsNotNull();
 
             int start = startIndex.GetOffset(value.Length);
 
@@ -87,7 +89,7 @@ namespace JakePerry
 
         public Substring(string value, Range range)
         {
-            _ = value ?? throw new ArgumentNullException(nameof(value));
+            Enforce.Argument(value, nameof(value)).IsNotNull();
 
             (int start, int length) = range.GetOffsetAndLength(value.Length);
 
@@ -317,7 +319,7 @@ namespace JakePerry
             if (m_value is null) return StringComparer.Ordinal.GetHashCode((string)null);
             if (m_length == 0) return StringComparer.Ordinal.GetHashCode(string.Empty);
 
-            var hash = new HashCode();
+            HashCode hash = new();
             fixed (char* ptr = m_value)
             {
                 int i = m_start;

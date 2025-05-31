@@ -156,7 +156,7 @@ namespace JakePerry
         /// </returns>
         public bool SetValue(object obj, object value, IEqualityComparer comparer, out object previousValue)
         {
-            _ = comparer ?? throw new ArgumentNullException(nameof(comparer));
+            Enforce.Argument(comparer, nameof(comparer)).IsNotNull();
 
             if (member is FieldInfo field)
             {
@@ -205,7 +205,7 @@ namespace JakePerry
 
         public static ValueMemberInfo FromMemberInfo(MemberInfo member)
         {
-            _ = member ?? throw new ArgumentNullException(nameof(member));
+            Enforce.Argument(member, nameof(member)).IsNotNull();
 
             if (member is FieldInfo field)
                 return new ValueMemberInfo(field);
@@ -229,7 +229,7 @@ namespace JakePerry
         /// <exception cref="ArgumentNullException"/>
         public static bool TryCast(MemberInfo member, out ValueMemberInfo valueMember)
         {
-            _ = member ?? throw new ArgumentNullException(nameof(member));
+            Enforce.Argument(member, nameof(member)).IsNotNull();
 
             valueMember = member switch
             {

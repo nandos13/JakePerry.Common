@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
 
 namespace JakePerry
 {
@@ -7,19 +6,22 @@ namespace JakePerry
     {
         public static StringBuilder Append(this StringBuilder stringBuilder, Substring substring)
         {
-            _ = stringBuilder ?? throw new ArgumentNullException(nameof(stringBuilder));
+            Enforce.Argument(stringBuilder, nameof(stringBuilder)).IsNotNull();
+
             return stringBuilder.Append(substring.AsSpan());
         }
 
         public static StringBuilder AppendLine(this StringBuilder stringBuilder, Substring substring)
         {
-            _ = stringBuilder ?? throw new ArgumentNullException(nameof(stringBuilder));
+            Enforce.Argument(stringBuilder, nameof(stringBuilder)).IsNotNull();
+
             return stringBuilder.Append(substring.AsSpan()).AppendLine();
         }
 
         public static StringBuilder Insert(this StringBuilder stringBuilder, int index, Substring substring)
         {
-            _ = stringBuilder ?? throw new ArgumentNullException(nameof(stringBuilder));
+            Enforce.Argument(stringBuilder, nameof(stringBuilder)).IsNotNull();
+
             return stringBuilder.Insert(index, substring.AsSpan());
         }
     }

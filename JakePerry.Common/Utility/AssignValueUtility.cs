@@ -19,7 +19,7 @@ namespace JakePerry
         /// </returns>
         public static bool Set<T>(ref T currentValue, T newValue, IEqualityComparer<T> comparer)
         {
-            _ = comparer ?? throw new ArgumentNullException(nameof(comparer));
+            Enforce.Argument(comparer, nameof(comparer)).IsNotNull();
 
             // If both values are equal (value is not changing), return false.
             if (comparer.Equals(currentValue, newValue))
