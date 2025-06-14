@@ -31,14 +31,17 @@ namespace JakePerry.Collections
         IEquatable<ReadOnlyArray<T>?>,
         IEnumerable<T>,
         IReadOnlyCollection<T>,
-        IReadOnlyList<T>
+        IReadOnlyList<T>,
+        IMightBeValid
     {
         private readonly T[] m_array;
 
-        public T this[int index] => m_array[index];
+        public readonly T this[int index] => m_array[index];
 
         /// <inheritdoc cref="Array.Length"/>
-        public int Length => m_array.Length;
+        public readonly int Length => m_array.Length;
+
+        public readonly bool IsValid => m_array is not null;
 
         int IReadOnlyCollection<T>.Count => this.Length;
 
@@ -48,25 +51,25 @@ namespace JakePerry.Collections
         }
 
         /// <inheritdoc cref="Array.BinarySearch{T}(T[], int, int, T, IComparer{T})"/>
-        public int BinarySearch(int index, int length, T item, IComparer<T> comparer)
+        public readonly int BinarySearch(int index, int length, T item, IComparer<T> comparer)
         {
             return Array.BinarySearch(m_array, index, length, item, comparer);
         }
 
         /// <inheritdoc cref="Array.BinarySearch{T}(T[], int, int, T)"/>
-        public int BinarySearch(int index, int length, T item)
+        public readonly int BinarySearch(int index, int length, T item)
         {
             return Array.BinarySearch(m_array, index, length, item);
         }
 
         /// <inheritdoc cref="Array.BinarySearch{T}(T[], T, IComparer{T})"/>
-        public int BinarySearch(T item, IComparer<T> comparer)
+        public readonly int BinarySearch(T item, IComparer<T> comparer)
         {
             return Array.BinarySearch(m_array, item, comparer);
         }
 
         /// <inheritdoc cref="Array.BinarySearch{T}(T[], T)"/>
-        public int BinarySearch(T item)
+        public readonly int BinarySearch(T item)
         {
             return Array.BinarySearch(m_array, item);
         }
@@ -82,14 +85,14 @@ namespace JakePerry.Collections
         /// <see langword="true"/> if <paramref name="item"/> is found in the
         /// <typeparamref name="T"/>[]; otherwise, <see langword="false"/>.
         /// </returns>
-        public bool Contains(T item) => Array.IndexOf(m_array, item) > -1;
+        public readonly bool Contains(T item) => Array.IndexOf(m_array, item) > -1;
 
         /// <summary>
         /// Copy the array's contents to a new array.
         /// <para/>
         /// Note that this is an allocating call.
         /// </summary>
-        public T[] Copy()
+        public readonly T[] Copy()
         {
             if (m_array is null) throw new InvalidOperationException();
             var len = m_array.Length;
@@ -98,24 +101,24 @@ namespace JakePerry.Collections
             return cpy;
         }
 
-        public void CopyTo(T[] array, int index) => m_array.CopyTo(array, index);
+        public readonly void CopyTo(T[] array, int index) => m_array.CopyTo(array, index);
 
-        public void CopyTo(Span<T> destination) => m_array.CopyTo(destination);
+        public readonly void CopyTo(Span<T> destination) => m_array.CopyTo(destination);
 
-        public void CopyTo(Memory<T> destination) => m_array.CopyTo(destination);
+        public readonly void CopyTo(Memory<T> destination) => m_array.CopyTo(destination);
 
-        public void CopyTo(List<T> list)
+        public readonly void CopyTo(List<T> list)
         {
             Enforce.Argument(list, nameof(list)).IsNotNull();
 
             list.AddRange(m_array);
         }
 
-        public int IndexOf(T item) => Array.IndexOf(m_array, item);
+        public readonly int IndexOf(T item) => Array.IndexOf(m_array, item);
 
-        public int IndexOf(T item, int startIndex) => Array.IndexOf(m_array, item, startIndex);
+        public readonly int IndexOf(T item, int startIndex) => Array.IndexOf(m_array, item, startIndex);
 
-        public int IndexOf(T item, int startIndex, int count) => Array.IndexOf(m_array, item, startIndex, count);
+        public readonly int IndexOf(T item, int startIndex, int count) => Array.IndexOf(m_array, item, startIndex, count);
 
         /// <summary>
         /// Get the underlying array as an <see cref="IEnumerable{T}"/>.
@@ -124,34 +127,32 @@ namespace JakePerry.Collections
         /// Use this method to avoid boxing when passing the array to a method expecting
         /// the IEnumerable interface type.
         /// </remarks>
-        public IEnumerable<T> AsEnumerable() => m_array;
+        public readonly IEnumerable<T> AsEnumerable() => m_array;
 
         /// <summary>
         /// Get the underlying array as an <see cref="IReadOnlyCollection{T}"/>.
         /// </summary>
         /// <inheritdoc cref="AsEnumerable"/>
-        public IReadOnlyCollection<T> AsReadOnlyCollection() => m_array;
+        public readonly IReadOnlyCollection<T> AsReadOnlyCollection() => m_array;
 
         /// <summary>
         /// Get the underlying array as an <see cref="IReadOnlyList{T}"/>.
         /// </summary>
         /// <inheritdoc cref="AsEnumerable"/>
-        public IReadOnlyList<T> AsReadOnlyList() => m_array;
+        public readonly IReadOnlyList<T> AsReadOnlyList() => m_array;
 
-        public ArrayEnumerator<T> GetEnumerator() => new ArrayEnumerator<T>(m_array);
+        public readonly ArrayEnumerator<T> GetEnumerator() => new(m_array);
 
-#pragma warning disable HAA0601 // Value type to reference type conversion causing boxing allocation
         IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
 
         IEnumerator<T> IEnumerable<T>.GetEnumerator() => this.GetEnumerator();
-#pragma warning restore HAA0601
 
-        public bool Equals(ReadOnlyArray<T> other)
+        public readonly bool Equals(ReadOnlyArray<T> other)
         {
             return m_array == other.m_array;
         }
 
-        public bool Equals(ReadOnlyArray<T>? other)
+        public readonly bool Equals(ReadOnlyArray<T>? other)
         {
             var otherList = other.HasValue
                 ? other.Value.m_array
@@ -160,7 +161,7 @@ namespace JakePerry.Collections
             return m_array == otherList;
         }
 
-        public override bool Equals(object obj)
+        public readonly override bool Equals(object obj)
         {
             if (obj is null) return m_array is null;
             if (obj is T[] other1) return m_array == other1;
@@ -169,7 +170,7 @@ namespace JakePerry.Collections
             return false;
         }
 
-        public override int GetHashCode()
+        public readonly override int GetHashCode()
         {
             return EqualityComparer<T[]>.Default.GetHashCode(m_array);
         }

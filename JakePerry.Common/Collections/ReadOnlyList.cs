@@ -31,16 +31,19 @@ namespace JakePerry.Collections
         IEquatable<ReadOnlyList<T>?>,
         IEnumerable<T>,
         IReadOnlyCollection<T>,
-        IReadOnlyList<T>
+        IReadOnlyList<T>,
+        IMightBeValid
     {
         private static List<T> _empty;
 
         private readonly List<T> m_list;
 
-        public T this[int index] => m_list[index];
+        public readonly T this[int index] => m_list[index];
 
         /// <inheritdoc cref="List{T}.Count"/>
-        public int Count => m_list.Count;
+        public readonly int Count => m_list.Count;
+
+        public readonly bool IsValid => m_list is not null;
 
         public ReadOnlyList(List<T> list)
         {
@@ -48,36 +51,36 @@ namespace JakePerry.Collections
         }
 
         /// <inheritdoc cref="List{T}.BinarySearch(int, int, T, IComparer{T})"/>
-        public int BinarySearch(int index, int count, T item, IComparer<T> comparer)
+        public readonly int BinarySearch(int index, int count, T item, IComparer<T> comparer)
         {
             return m_list.BinarySearch(index, count, item, comparer);
         }
 
         /// <inheritdoc cref="List{T}.BinarySearch(T, IComparer{T})"/>
-        public int BinarySearch(T item, IComparer<T> comparer)
+        public readonly int BinarySearch(T item, IComparer<T> comparer)
         {
             return m_list.BinarySearch(item, comparer);
         }
 
         /// <inheritdoc cref="List{T}.BinarySearch(T)"/>
-        public int BinarySearch(T item)
+        public readonly int BinarySearch(T item)
         {
             return m_list.BinarySearch(item);
         }
 
         /// <inheritdoc cref="List{T}.Contains(T)"/>
-        public bool Contains(T item) => m_list.Contains(item);
+        public readonly bool Contains(T item) => m_list.Contains(item);
 
         /// <inheritdoc cref="List{T}.CopyTo(T[], int)"/>
-        public void CopyTo(T[] array, int arrayIndex) => m_list.CopyTo(array, arrayIndex);
+        public readonly void CopyTo(T[] array, int arrayIndex) => m_list.CopyTo(array, arrayIndex);
 
         /// <inheritdoc cref="List{T}.CopyTo(T[])"/>
-        public void CopyTo(T[] array) => m_list.CopyTo(array);
+        public readonly void CopyTo(T[] array) => m_list.CopyTo(array);
 
         /// <inheritdoc cref="List{T}.CopyTo(int, T[], int, int)"/>
-        public void CopyTo(int index, T[] array, int arrayIndex, int count) => m_list.CopyTo(index, array, arrayIndex, count);
+        public readonly void CopyTo(int index, T[] array, int arrayIndex, int count) => m_list.CopyTo(index, array, arrayIndex, count);
 
-        public void CopyTo(List<T> list)
+        public readonly void CopyTo(List<T> list)
         {
             Enforce.Argument(list, nameof(list)).IsNotNull();
 
@@ -85,13 +88,13 @@ namespace JakePerry.Collections
         }
 
         /// <inheritdoc cref="List{T}.IndexOf(T)"/>
-        public int IndexOf(T item) => m_list.IndexOf(item);
+        public readonly int IndexOf(T item) => m_list.IndexOf(item);
 
         /// <inheritdoc cref="List{T}.IndexOf(T, int)"/>
-        public int IndexOf(T item, int index) => m_list.IndexOf(item, index);
+        public readonly int IndexOf(T item, int index) => m_list.IndexOf(item, index);
 
         /// <inheritdoc cref="List{T}.IndexOf(T, int, int)"/>
-        public int IndexOf(T item, int index, int count) => m_list.IndexOf(item, index, count);
+        public readonly int IndexOf(T item, int index, int count) => m_list.IndexOf(item, index, count);
 
         /// <summary>
         /// Get the underlying list as an <see cref="IEnumerable{T}"/>.
@@ -100,36 +103,34 @@ namespace JakePerry.Collections
         /// Use this method to avoid boxing when passing the list to a method expecting
         /// the IEnumerable interface type.
         /// </remarks>
-        public IEnumerable<T> AsEnumerable() => m_list;
+        public readonly IEnumerable<T> AsEnumerable() => m_list;
 
         /// <summary>
         /// Get the underlying list as an <see cref="IReadOnlyCollection{T}"/>.
         /// </summary>
         /// <inheritdoc cref="AsEnumerable"/>
-        public IReadOnlyCollection<T> AsReadOnlyCollection() => m_list;
+        public readonly IReadOnlyCollection<T> AsReadOnlyCollection() => m_list;
 
         /// <summary>
         /// Get the underlying list as an <see cref="IReadOnlyList{T}"/>.
         /// </summary>
         /// <inheritdoc cref="AsEnumerable"/>
-        public IReadOnlyList<T> AsReadOnlyListInterface() => m_list;
+        public readonly IReadOnlyList<T> AsReadOnlyListInterface() => m_list;
 
         /// <inheritdoc cref="List{T}.ToArray"/>
         public T[] ToArray() => m_list.ToArray();
 
-        public List<T>.Enumerator GetEnumerator() => m_list.GetEnumerator();
+        public readonly List<T>.Enumerator GetEnumerator() => m_list.GetEnumerator();
 
-#pragma warning disable HAA0601 // Value type to reference type conversion causing boxing allocation
         IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
         IEnumerator<T> IEnumerable<T>.GetEnumerator() => this.GetEnumerator();
-#pragma warning restore HAA0601
 
-        public bool Equals(ReadOnlyList<T> other)
+        public readonly bool Equals(ReadOnlyList<T> other)
         {
             return m_list == other.m_list;
         }
 
-        public bool Equals(ReadOnlyList<T>? other)
+        public readonly bool Equals(ReadOnlyList<T>? other)
         {
             var otherList = other.HasValue
                 ? other.Value.m_list
@@ -138,7 +139,7 @@ namespace JakePerry.Collections
             return m_list == otherList;
         }
 
-        public override bool Equals(object obj)
+        public readonly override bool Equals(object obj)
         {
             if (obj is null) return m_list is null;
             if (obj is List<T> other1) return m_list == other1;
@@ -147,7 +148,7 @@ namespace JakePerry.Collections
             return false;
         }
 
-        public override int GetHashCode()
+        public readonly override int GetHashCode()
         {
             return EqualityComparer<List<T>>.Default.GetHashCode(m_list);
         }
