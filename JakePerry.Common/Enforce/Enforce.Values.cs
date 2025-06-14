@@ -130,5 +130,18 @@ namespace JakePerry
                 throw new EnforceException($"Must be a defined enum value. Value: {c.value}");
             }
         }
+
+        /// <summary>
+        /// Assert that the value is in a valid state.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void IsInValidState<T>(this in Enforce.ValueContainer<T> c)
+            where T : struct, IMightBeValid
+        {
+            if (!c.value.IsValid)
+            {
+                throw new EnforceException("Object is invalid.");
+            }
+        }
     }
 }
