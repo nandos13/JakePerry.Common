@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 
-namespace JakePerry.Utility
+namespace JakePerry
 {
     public static class NullableEx
     {
