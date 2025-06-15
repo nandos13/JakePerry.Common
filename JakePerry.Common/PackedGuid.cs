@@ -14,7 +14,9 @@ namespace JakePerry
         IComparable<PackedGuid>,
         IEquatable<Guid>,
         IEquatable<PackedGuid>,
-        IFormattable
+        IFormattable,
+        IStruct,
+        IStructWithDefaultCheck
     {
         [FieldOffset(0)]
         [NonSerialized]
@@ -34,6 +36,8 @@ namespace JakePerry
         /// Second 8-byte segment.
         /// </summary>
         public readonly ulong B => m_b;
+
+        public readonly bool IsDefaultValue => m_a == 0UL && m_b == 0UL;
 
         public PackedGuid(Guid guid)
         {
