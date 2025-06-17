@@ -22,36 +22,55 @@ namespace JakePerry
         [NonSerialized]
         private Guid m_guid;
 
+        /// <summary>
+        /// First 8-byte segment of the Guid.
+        /// </summary>
         [FieldOffset(0)]
-        private readonly ulong m_a;
+        public ulong a;
+
+        /// <summary>
+        /// Second 8-byte segment of the Guid.
+        /// </summary>
         [FieldOffset(8)]
-        private readonly ulong m_b;
+        public ulong b;
+
+        public readonly bool IsDefaultValue => a == 0UL && b == 0UL;
 
         /// <summary>
-        /// First 8-byte segment.
+        /// Initializes a new instance of the <see cref="PackedGuid"/> structure.
         /// </summary>
-        public readonly ulong A => m_a;
-
-        /// <summary>
-        /// Second 8-byte segment.
-        /// </summary>
-        public readonly ulong B => m_b;
-
-        public readonly bool IsDefaultValue => m_a == 0UL && m_b == 0UL;
-
+        /// <param name="guid">
+        /// The <see cref="Guid"/> to encapsulate.
+        /// </param>
         public PackedGuid(Guid guid)
         {
-            m_a = m_b = 0;
+            a = b = 0;
             m_guid = guid;
         }
 
+        /// <summary>
+        /// <inheritdoc cref="PackedGuid(Guid)" path="/summary"/>
+        /// </summary>
+        /// <param name="guid">
+        /// <inheritdoc cref="Guid(string)" path="/param[@name='g']"/>
+        /// </param>
         public PackedGuid(string guid) : this(new Guid(guid)) { }
 
+        /// <summary>
+        /// <inheritdoc cref="PackedGuid(Guid)" path="/summary"/>
+        /// </summary>
+        /// <param name="a">
+        /// The first 8 bytes of the Guid.
+        /// </param>
+        /// <param name="b">
+        /// The second 8 bytes of the Guid.
+        /// </param>
         public PackedGuid(ulong a, ulong b)
         {
             m_guid = default;
-            m_a = a;
-            m_b = b;
+
+            this.a = a;
+            this.b = b;
         }
 
         public readonly int CompareTo(Guid other)
