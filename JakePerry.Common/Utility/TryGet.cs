@@ -39,7 +39,7 @@ namespace JakePerry
         /// {
         ///     if (...)
         ///     {
-        ///         return TryGet.Pass("result", out o);
+        ///         return TryGet.Pass(out o, "result");
         ///     }
         ///     
         ///     // ...
@@ -50,7 +50,7 @@ namespace JakePerry
         /// Always returns <see langword="true"/>.
         /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Pass<T>(T value, out T recipient)
+        public static bool Pass<T>(out T recipient, T value)
         {
             recipient = value;
             return true;

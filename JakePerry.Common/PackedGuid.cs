@@ -7,7 +7,7 @@ namespace JakePerry
     /// Packs a <see cref="Guid"/> into two <see cref="ulong"/> values.
     /// </summary>
     [Serializable]
-    [StructLayout(LayoutKind.Explicit, Size = 128)]
+    [StructLayout(LayoutKind.Explicit, Size = 16)]
     public struct PackedGuid :
         IComparable,
         IComparable<Guid>,
