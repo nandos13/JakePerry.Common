@@ -57,7 +57,7 @@ namespace JakePerry
         /// </param>
         public List<T> RentWithCapacity(int capacity)
         {
-            var helper = _capacityHelper ??= new();
+            CapacityHelper helper = _capacityHelper ??= new();
             helper.Capacity = capacity;
 
             if (TryRent(helper.minCapacityPredicate, out List<T> match))
@@ -65,7 +65,7 @@ namespace JakePerry
                 return match;
             }
 
-            var list = RentBest(comparer: helper);
+            List<T> list = RentBest(comparer: helper);
             list.Capacity = capacity;
 
             return list;

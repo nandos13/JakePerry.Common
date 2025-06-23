@@ -65,7 +65,7 @@ namespace JakePerry
         /// <seealso cref="ListPool{T}.RentWithCapacity(int)"/>
         public static ObjectPool<List<T>>.RentalScope RentInScope<T>(int capacity, out List<T> list)
         {
-            var pool = GenericListPool<T>._pool;
+            ListPool<T> pool = GenericListPool<T>._pool;
             list = pool.RentWithCapacity(capacity);
             return new ObjectPool<List<T>>.RentalScope(pool, list);
         }
