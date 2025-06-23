@@ -41,7 +41,7 @@ namespace JakePerry.Threading
         /// <summary>
         /// Indicates whether the current thread has acquired the lock.
         /// </summary>
-        internal bool IsLockedByCurrentThread =>
+        internal readonly bool IsLockedByCurrentThread =>
             m_lockToken != 0 && m_ownerThreadId == Thread.CurrentThread.ManagedThreadId;
 
         /// <summary>
@@ -116,5 +116,12 @@ namespace JakePerry.Threading
         {
             return new SpinLockSlim(true);
         }
+
+        // TODO: When I am able to update the target framework, implement an auto
+        // disposable helper struct.
+        //internal readonly ref struct Auto
+        //{
+        //    private readonly ref SpinLockSlim m_lock;
+        //}
     }
 }
