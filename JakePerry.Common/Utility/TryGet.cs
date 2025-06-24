@@ -6,7 +6,8 @@ namespace JakePerry
     {
         /// <summary>
         /// Helper for failing some TryGetX method. Assigns the <see langword="default"/> value
-        /// to the <see langword="out"/> parameter, then returns <see langword="false"/>.
+        /// - or the <paramref name="defaultValue"/> specified by the user - to the
+        /// <see langword="out"/> parameter, then returns <see langword="false"/>.
         /// <para/>
         /// <b>Usage:</b>
         /// <code>
@@ -18,13 +19,18 @@ namespace JakePerry
         /// }
         /// </code>
         /// </summary>
+        /// <param name="defaultValue">
+        /// The value to be assigned to the <see langword="out"/> parameter.
+        /// Usually this does not need to be specified, but in some cases it may be preferable
+        /// to default to another value, ie. -1 instead of 0 for <see cref="int"/> parameters.
+        /// </param>
         /// <returns>
         /// Always returns <see langword="false"/>.
         /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Fail<T>(out T o)
+        public static bool Fail<T>(out T o, T defaultValue = default)
         {
-            o = default;
+            o = defaultValue;
             return false;
         }
 

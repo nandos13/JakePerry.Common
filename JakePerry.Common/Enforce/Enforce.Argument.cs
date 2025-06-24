@@ -84,6 +84,22 @@ namespace JakePerry
         }
 
         /// <summary>
+        /// Assert that the argument is a valid index.
+        /// </summary>
+        /// <param name="bound">
+        /// The upper bound (ie. the size of the container that you are indexing into).
+        /// </param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void IsValidIndex(this in Enforce.ArgumentContainer<int> c, int bound)
+        {
+            if (c.value < 0 || c.value >= bound)
+            {
+                throw new ArgumentOutOfRangeException(c.parameterName, c.value,
+                    $"Index was out of range. Must be non-negative and less than the size of the collection.");
+            }
+        }
+
+        /// <summary>
         /// Assert that the argument is greater than a given lower bound value.
         /// </summary>
         /// <param name="bound">

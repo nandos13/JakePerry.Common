@@ -19,7 +19,6 @@ namespace JakePerry.PySharp
             public readonly int Current => m_current;
 
             readonly object IEnumerator.Current => m_current;
-            readonly int IEnumerator<int>.Current => m_current;
 
             public Enumerator(int start, int stop, int step)
             {
