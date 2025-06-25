@@ -5,11 +5,20 @@ using System.Runtime.CompilerServices;
 
 namespace JakePerry.Collections
 {
-    public class ChunkList<T> : IEnumerable<T>
+    public class ChunkList<T> : IEnumerable,
+        IEnumerable<T>,
+        IReadOnlyCollection<T>,
+        ICollection<T>,
+        IReadOnlyList<T>,
+        IList<T>
     {
         private const int DefaultChunkSize = 64;
 
-        internal sealed class Chunk
+        /// <remarks>
+        /// This type implements the <see cref="IEnumerable"/> interface purely to allow use of the
+        /// 'collection initializer' syntax. Enumerating this type is not supported
+        /// </remarks>
+        internal sealed class Chunk : IEnumerable
         {
             public readonly T[] items;
 
@@ -26,6 +35,22 @@ namespace JakePerry.Collections
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => count == items.Length;
             }
+
+            /// <summary>
+            /// Adds an item, no validation performed.
+            /// This method only exists to open up the Add syntax when initializing a new chunk.
+            /// </summary>
+            internal void Add(T item)
+            {
+                // Note: Though this method doesn't validate, still don't want to mutate the count property
+                // right away, just in case we're going out of bounds on a full array.
+                int c = count + 1;
+
+                items[c] = item;
+                count = c;
+            }
+
+            IEnumerator IEnumerable.GetEnumerator() => throw new NotSupportedException();
         }
 
         public struct Enumerator : IEnumerator, IEnumerator<T>
@@ -40,7 +65,13 @@ namespace JakePerry.Collections
             internal Enumerator(Chunk chunk, int startIndex = 0)
             {
                 Enforce.Argument(chunk, nameof(chunk)).IsNotNull();
-                Enforce.Argument(startIndex, nameof(startIndex)).IsValidIndex(chunk.count);
+
+                // Allow enumeration if the ChunkList is empty. This is the only case where an empty
+                // chunk is possible. All non-head chunks are guaranteed to contain at least one item.
+                if (chunk.count > 0)
+                {
+                    Enforce.Argument(startIndex, nameof(startIndex)).IsValidIndex(chunk.count);
+                }
 
                 m_chunk = chunk;
                 m_current = startIndex - 1;
@@ -70,12 +101,32 @@ namespace JakePerry.Collections
 
         private readonly int m_chunkSize;
 
-        private Chunk m_head;
+        private readonly Chunk m_head;
         private Chunk m_tail;
 
         private int m_count;
 
         public int Count => m_count;
+
+        bool ICollection<T>.IsReadOnly => false;
+
+        public T this[int index]
+        {
+            get
+            {
+                Enforce.Argument(index, nameof(index)).IsValidIndex(m_count);
+
+                GetChunkIndex(index, out int localIndex, out Chunk chunk);
+                return chunk.items[localIndex];
+            }
+            set
+            {
+                Enforce.Argument(index, nameof(index)).IsValidIndex(m_count);
+
+                GetChunkIndex(index, out int localIndex, out Chunk chunk);
+                chunk.items[localIndex] = value;
+            }
+        }
 
         public ChunkList(int chunkSize = DefaultChunkSize)
         {
@@ -85,45 +136,15 @@ namespace JakePerry.Collections
             m_head = m_tail = new Chunk(m_chunkSize);
         }
 
-        public void Add(T item)
+        private void GetChunkIndex(int index, out int localIndex, out Chunk chunk)
         {
-            if (m_tail.IsFull)
-            {
-                Chunk newChunk = new(m_chunkSize);
-                m_tail.next = newChunk;
-                m_tail = newChunk;
-            }
-
-            m_tail.items[m_tail.count++] = item;
-            ++m_count;
-        }
-
-        public T this[int index]
-        {
-            get
-            {
-                Enforce.Argument(index, nameof(index)).IsValidIndex(m_count);
-
-                (int localIndex, Chunk chunk) = GetChunkAndLocalIndex(index);
-                return chunk.items[localIndex];
-            }
-            set
-            {
-                Enforce.Argument(index, nameof(index)).IsValidIndex(m_count);
-
-                (int localIndex, Chunk chunk) = GetChunkAndLocalIndex(index);
-                chunk.items[localIndex] = value;
-            }
-        }
-
-        private (int localIndex, Chunk chunk) GetChunkAndLocalIndex(int index)
-        {
-            Chunk chunk = m_head;
+            chunk = m_head;
             while (chunk != null)
             {
                 if (index < chunk.count)
                 {
-                    return (index, chunk);
+                    localIndex = index;
+                    return;
                 }
 
                 index -= chunk.count;
@@ -135,82 +156,207 @@ namespace JakePerry.Collections
             throw new ArgumentOutOfRangeException();
         }
 
+        private bool Find(T item, out int index, out int localIndex, out Chunk chunk)
+        {
+            int offset = 0;
+            chunk = m_head;
+            do
+            {
+                localIndex = Array.IndexOf(chunk.items, item, 0, chunk.count);
+                if (localIndex > -1)
+                {
+                    return TryGet.Pass(out index, localIndex + offset);
+                }
+                offset += chunk.count;
+                chunk = chunk.next;
+            }
+            while (chunk is not null);
+
+            return TryGet.Fail(out index, -1);
+        }
+
         public ref T UnsafeGetByRef(int index)
         {
             Enforce.Argument(index, nameof(index)).IsValidIndex(m_count);
 
-            (int localIndex, Chunk chunk) = GetChunkAndLocalIndex(index);
+            GetChunkIndex(index, out int localIndex, out Chunk chunk);
             return ref chunk.items[localIndex];
         }
 
-        private void InsertIntoChunk(Chunk chunk, int index, T item)
+        public void Add(T item)
         {
-            // If the chunk is full, we need to make room
-            if (chunk.IsFull)
+            if (m_tail.IsFull)
             {
-                Chunk newChunk = new(m_chunkSize)
+                Chunk newChunk = new(m_chunkSize) { item };
+                m_tail.next = newChunk;
+                m_tail = newChunk;
+            }
+            else
+            {
+                m_tail.items[m_tail.count++] = item;
+            }
+            ++m_count;
+        }
+
+        public void Clear()
+        {
+            m_tail = m_head;
+
+            m_head.next = null;
+            m_head.count = 0;
+            m_count = 0;
+
+            Array.Clear(m_head.items, 0, m_head.items.Length);
+        }
+
+        public bool Contains(T item)
+        {
+            return IndexOf(item) > -1;
+        }
+
+        public void CopyTo(T[] array, int arrayIndex)
+        {
+            Enforce.Argument(array, nameof(array)).IsNotNull();
+            Enforce.Argument(arrayIndex, nameof(arrayIndex)).IsGreaterThanOrEqual(0);
+
+            if (arrayIndex + m_count > array.Length)
+            {
+                throw new ArgumentException(SR.Arg_ArrayPlusOffTooSmall);
+            }
+
+            if (m_count == 0) return;
+
+            int currentIndex = arrayIndex;
+            Chunk chunk = m_head;
+
+            do
+            {
+                Array.Copy(chunk.items, 0, array, currentIndex, chunk.count);
+                currentIndex += chunk.count;
+                chunk = chunk.next;
+            }
+            while (chunk is not null);
+        }
+
+        public int IndexOf(T item)
+        {
+            return Find(item, out int index, out _, out _) ? index : -1;
+        }
+
+        private void InsertIntoChunk(Chunk chunk, int localIndex, T item)
+        {
+            while (chunk is not null)
+            {
+                if (!chunk.IsFull)
                 {
-                    next = chunk.next
-                };
-                chunk.next = newChunk;
+                    // Chunk has space, shift items and insert
+                    if (localIndex < chunk.count)
+                    {
+                        Array.Copy(chunk.items, localIndex, chunk.items, localIndex + 1, chunk.count - localIndex);
+                    }
 
-                // Move last item to the new chunk
-                newChunk.items[0] = chunk.items[chunk.count - 1];
-                newChunk.count = 1;
-                --chunk.count;
+                    chunk.items[localIndex] = item;
+                    ++chunk.count;
+                    return;
+                }
+                else
+                {
+                    // Chunk is full. Cascade into subsequent chunk
+                    T lastItem = chunk.items[chunk.count - 1];
 
-                if (chunk == m_tail)
-                    m_tail = newChunk;
+                    // Shift items to make space for the new item
+                    if (localIndex < chunk.count - 1)
+                    {
+                        Array.Copy(chunk.items, localIndex, chunk.items, localIndex + 1, chunk.count - 1 - localIndex);
+                    }
+
+                    chunk.items[localIndex] = item;
+
+                    // Current chunk's last item becomes the item to insert into next chunk
+                    item = lastItem;
+                    localIndex = 0;
+
+                    chunk = chunk.next;
+                }
             }
 
-            // Shift items to make space
-            for (int i = chunk.count; i > index; --i)
-            {
-                chunk.items[i] = chunk.items[i - 1];
-            }
+            // Code will only reach this point if the tail chunk is at full capacity.
+            // In this case, we need to create a new chunk to add onto the tail.
+            Chunk newChunk = new(m_chunkSize) { item };
 
-            chunk.items[index] = item;
-            ++chunk.count;
+            m_tail.next = newChunk;
+            m_tail = newChunk;
         }
 
         public void Insert(int index, T item)
         {
-            Enforce.Argument(index, nameof(index)).IsValidIndex(m_count);
+            Enforce.Argument(index, nameof(index)).IsBetween(0, m_count, maxDisplay: nameof(Count));
 
-            (int localIndex, Chunk chunk) = GetChunkAndLocalIndex(index);
+            GetChunkIndex(index, out int localIndex, out Chunk chunk);
 
             InsertIntoChunk(chunk, localIndex, item);
             ++m_count;
         }
 
-        public void RemoveAt(int index)
+        private void RemoveFromChunk(Chunk chunk, int localIndex)
         {
-            static void RemoveFromChunk(Chunk chunk, int index)
+            while (chunk is not null)
             {
-                // Shift items down
-                for (int i = index; i < chunk.count - 1; ++i)
+                if (localIndex < chunk.count - 1)
                 {
-                    chunk.items[i] = chunk.items[i + 1];
+                    // Shift items within the current chunk
+                    Array.Copy(chunk.items, localIndex + 1, chunk.items, localIndex, chunk.count - localIndex - 1);
                 }
 
-                --chunk.count;
+                // If there's a next chunk, move its first item to fill the last position
+                if (chunk.next is not null)
+                {
+                    chunk.items[chunk.count - 1] = chunk.next.items[0];
+                    if (chunk.next.count > 1)
+                    {
+                        // Move to the next chunk, starting at the beginning
+                        chunk = chunk.next;
+                        localIndex = 0;
+                    }
+                    else
+                    {
+                        JPDebug.Assert(m_tail == chunk.next);
 
-                // Remove the item reference from the array so it can be collected by the GC
-                chunk.items[chunk.count] = default;
+                        // The next chunk only had one element, which we just moved to this chunk.
+                        chunk.next = null;
+                        m_tail = chunk;
+                    }
+                }
+                else
+                {
+                    // This is the last chunk or next chunk is empty
+                    --chunk.count;
+                    chunk.items[chunk.count] = default;
+                    chunk = null;
+                }
+            }
+        }
+
+        public bool Remove(T item)
+        {
+            if (Find(item, out _, out int localIndex, out Chunk chunk))
+            {
+                RemoveFromChunk(chunk, localIndex);
+                --m_count;
+                return true;
             }
 
+            return false;
+        }
+
+        public void RemoveAt(int index)
+        {
             Enforce.Argument(index, nameof(index)).IsValidIndex(m_count);
 
-            (int localIndex, Chunk chunk) = GetChunkAndLocalIndex(index);
+            GetChunkIndex(index, out int localIndex, out Chunk chunk);
 
             RemoveFromChunk(chunk, localIndex);
             --m_count;
-        }
-
-        public void Clear()
-        {
-            m_head = m_tail = new Chunk(m_chunkSize);
-            m_count = 0;
         }
 
         public Enumerator GetEnumerator() => new(m_head);

@@ -37,7 +37,7 @@ namespace JakePerry.Collections
 
         internal FixedSizeBuffer(int capacity)
         {
-            if (capacity < 0) throw new ArgumentOutOfRangeException(nameof(capacity));
+            Enforce.Argument(capacity, nameof(capacity)).IsPositive();
 
             m_buffer = capacity == 0 ? Array.Empty<T>() : new T[capacity];
         }
@@ -73,7 +73,7 @@ namespace JakePerry.Collections
 
         internal bool Insert(int index, T item)
         {
-            if (index < 0 || index > m_count) throw new ArgumentOutOfRangeException(nameof(index));
+            Enforce.Argument(index, nameof(index)).IsBetween(0, m_count, maxDisplay: nameof(Count));
 
             if (m_count != Capacity)
             {
@@ -97,7 +97,7 @@ namespace JakePerry.Collections
 
         internal void RemoveAt(int index)
         {
-            if (index >= m_count) throw new ArgumentOutOfRangeException(nameof(index));
+            Enforce.Argument(index, nameof(index)).IsValidIndex(m_count);
 
             m_count--;
             if (index < m_count)
@@ -126,9 +126,9 @@ namespace JakePerry.Collections
             RemoveAt(m_count - 1);
         }
 
-        internal ReadOnlyArray<T> AsReadOnly() => new ReadOnlyArray<T>(m_buffer);
+        internal ReadOnlyArray<T> AsReadOnly() => new(m_buffer);
 
-        internal ArrayEnumerator<T> GetEnumerator() => new ArrayEnumerator<T>(m_buffer);
+        internal ArrayEnumerator<T> GetEnumerator() => new(m_buffer);
 
         IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
 
