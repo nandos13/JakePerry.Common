@@ -5,6 +5,13 @@ using System.Runtime.CompilerServices;
 
 namespace JakePerry.Collections
 {
+    /// <summary>
+    /// A generic collection that provides dynamic array functionality using chunked storage for
+    /// optimized memory management.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The type of elements in the collection.
+    /// </typeparam>
     public class ChunkList<T> : IEnumerable,
         IEnumerable<T>,
         IReadOnlyCollection<T>,
@@ -53,6 +60,9 @@ namespace JakePerry.Collections
             IEnumerator IEnumerable.GetEnumerator() => throw new NotSupportedException();
         }
 
+        /// <summary>
+        /// Enumerates the elements of a <see cref="ChunkList{T}"/>.
+        /// </summary>
         public struct Enumerator : IEnumerator, IEnumerator<T>
         {
             private Chunk m_chunk;
@@ -61,6 +71,14 @@ namespace JakePerry.Collections
             public readonly T Current => m_chunk.items[m_current];
 
             readonly object IEnumerator.Current => Current;
+
+            public Enumerator(ChunkList<T> list)
+            {
+                Enforce.Argument(list, nameof(list)).IsNotNull();
+
+                m_chunk = list.m_head;
+                m_current = -1;
+            }
 
             internal Enumerator(Chunk chunk, int startIndex = 0)
             {
@@ -106,6 +124,12 @@ namespace JakePerry.Collections
 
         private int m_count;
 
+        /// <summary>
+        /// Gets the number of elements contained in the <see cref="ChunkList{T}"/>.
+        /// </summary>
+        /// <returns>
+        /// The number of elements contained in the <see cref="ChunkList{T}"/>.
+        /// </returns>
         public int Count => m_count;
 
         bool ICollection<T>.IsReadOnly => false;
@@ -175,6 +199,19 @@ namespace JakePerry.Collections
             return TryGet.Fail(out index, -1);
         }
 
+        /// <summary>
+        /// Returns a reference to the element at the specified index, allowing for direct manipulation without copying.
+        /// </summary>
+        /// <param name="index">
+        /// The zero-based index of the element.
+        /// </param>
+        /// <returns>
+        /// A reference to the element at the specified index.
+        /// </returns>
+        /// <remarks>
+        /// This method provides direct access to the internal storage.
+        /// Use with caution as it bypasses normal encapsulation.
+        /// </remarks>
         public ref T UnsafeGetByRef(int index)
         {
             Enforce.Argument(index, nameof(index)).IsValidIndex(m_count);
