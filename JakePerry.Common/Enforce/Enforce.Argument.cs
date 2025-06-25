@@ -70,8 +70,14 @@ namespace JakePerry
         /// <param name="maxInclusive">
         /// The upper bound, inclusive.
         /// </param>
+        /// <param name="minDisplay">
+        /// Replacement display string used for the minimum argument in the printed exception message.
+        /// </param>
+        /// <param name="maxDisplay">
+        /// Replacement display string used for the maximum argument in the printed exception message.
+        /// </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void IsBetween<T>(this in Enforce.ArgumentContainer<T> c, T minInclusive, T maxInclusive)
+        public static void IsBetween<T>(this in Enforce.ArgumentContainer<T> c, T minInclusive, T maxInclusive, string minDisplay = null, string maxDisplay = null)
             where T : IComparable<T>
         {
             int cmpMin = c.value.CompareTo(minInclusive);
@@ -79,7 +85,9 @@ namespace JakePerry
 
             if (cmpMin < 0 || cmpMax > 0)
             {
-                throw new ArgumentOutOfRangeException(c.parameterName, c.value, $"Must be in range [{minInclusive}..{maxInclusive}]");
+                minDisplay ??= minInclusive.ToString();
+                maxDisplay ??= maxInclusive.ToString();
+                throw new ArgumentOutOfRangeException(c.parameterName, c.value, $"Must be in range [{minDisplay}..{maxDisplay}]");
             }
         }
 
@@ -105,14 +113,18 @@ namespace JakePerry
         /// <param name="bound">
         /// The lower bound.
         /// </param>
+        /// <param name="boundDisplay">
+        /// Replacement display string used for the bound argument in the printed exception message.
+        /// </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void IsGreaterThan<T>(this in Enforce.ArgumentContainer<T> c, T bound)
+        public static void IsGreaterThan<T>(this in Enforce.ArgumentContainer<T> c, T bound, string boundDisplay = null)
             where T : IComparable<T>
         {
             int cmp = c.value.CompareTo(bound);
             if (cmp <= 0)
             {
-                throw new ArgumentOutOfRangeException(c.parameterName, c.value, $"Must be greater than {bound}");
+                boundDisplay ??= bound.ToString();
+                throw new ArgumentOutOfRangeException(c.parameterName, c.value, $"Must be greater than {boundDisplay}");
             }
         }
 
@@ -124,13 +136,14 @@ namespace JakePerry
         /// </param>
         /// <inheritdoc cref="IsGreaterThan"/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void IsGreaterThanOrEqual<T>(this in Enforce.ArgumentContainer<T> c, T bound)
+        public static void IsGreaterThanOrEqual<T>(this in Enforce.ArgumentContainer<T> c, T bound, string boundDisplay = null)
             where T : IComparable<T>
         {
             int cmp = c.value.CompareTo(bound);
             if (cmp < 0)
             {
-                throw new ArgumentOutOfRangeException(c.parameterName, c.value, $"Must be greater than or equal to {bound}");
+                boundDisplay ??= bound.ToString();
+                throw new ArgumentOutOfRangeException(c.parameterName, c.value, $"Must be greater than or equal to {boundDisplay}");
             }
         }
 
@@ -140,14 +153,18 @@ namespace JakePerry
         /// <param name="bound">
         /// The upper bound.
         /// </param>
+        /// <param name="boundDisplay">
+        /// Replacement display string used for the bound argument in the printed exception message.
+        /// </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void IsLessThan<T>(this in Enforce.ArgumentContainer<T> c, T bound)
+        public static void IsLessThan<T>(this in Enforce.ArgumentContainer<T> c, T bound, string boundDisplay = null)
             where T : IComparable<T>
         {
             int cmp = c.value.CompareTo(bound);
             if (cmp >= 0)
             {
-                throw new ArgumentOutOfRangeException(c.parameterName, c.value, $"Must be less than {bound}");
+                boundDisplay ??= bound.ToString();
+                throw new ArgumentOutOfRangeException(c.parameterName, c.value, $"Must be less than {boundDisplay}");
             }
         }
 
@@ -159,13 +176,26 @@ namespace JakePerry
         /// </param>
         /// <inheritdoc cref="IsLessThan"/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void IsLessThanOrEqual<T>(this in Enforce.ArgumentContainer<T> c, T bound)
+        public static void IsLessThanOrEqual<T>(this in Enforce.ArgumentContainer<T> c, T bound, string boundDisplay = null)
             where T : IComparable<T>
         {
             int cmp = c.value.CompareTo(bound);
             if (cmp > 0)
             {
-                throw new ArgumentOutOfRangeException(c.parameterName, c.value, $"Must be less than or equal to {bound}");
+                boundDisplay ??= bound.ToString();
+                throw new ArgumentOutOfRangeException(c.parameterName, c.value, $"Must be less than or equal to {boundDisplay}");
+            }
+        }
+
+        /// <summary>
+        /// Assert that the argument is a positive integer.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void IsPositive(this in Enforce.ArgumentContainer<int> c)
+        {
+            if (c.value < 0)
+            {
+                throw new ArgumentException($"Must be a positive integer", c.parameterName);
             }
         }
 
